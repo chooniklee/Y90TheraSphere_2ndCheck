@@ -3,14 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TheraSphere Plan 2nd Checker</title>
-    <!-- Tailwind CSS -->
+    <title>Y90 2nd Check Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <!-- Babel for JSX transpilation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @media print {
             @page { margin: 1cm; size: auto; }
@@ -24,573 +18,761 @@
             .sticky { position: static !important; }
             input { border: none !important; background: transparent !important; padding: 0 !important; font-weight: bold !important; color: #1e293b !important; }
         }
-        
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+<body class="bg-slate-50 text-slate-900 font-sans p-3 md:p-4 outline-none min-h-screen">
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+            <div class="flex-1">
+                <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
+                    <span id="icon-activity-header"></span>
+                    TheraSphere Plan 2nd Checker
+                </h1>
+                <div class="flex items-center gap-4 mt-0.5">
+                    <p class="text-slate-500 text-sm font-medium opacity-90 decoration-slate-300">
+                        Independent calculation by Choonik Lee, PhD DABR • <span id="timestamp-display"></span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 no-print">
+                <button onclick="handlePrint()" class="px-5 py-2 text-sm font-bold text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 shadow-sm transition-all active:scale-95 flex items-center gap-2">
+                    <span id="icon-printer"></span> Generate PDF Report
+                </button>
+                <button onclick="handleNewSession()" class="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-all active:scale-95 flex items-center gap-2">
+                    <span id="icon-refresh"></span> New Session
+                </button>
+            </div>
+        </header>
 
-        const Icon = ({ name, size = 18, className = "" }) => {
+        <!-- Tabs -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+            <div id="tabs-container" class="flex gap-3 overflow-x-auto pb-1 custom-scrollbar pr-4"></div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            
+            <!-- Left Column: Form -->
+            <div class="lg:col-span-3 flex flex-col gap-3">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex-1 flex flex-col">
+                    <h4 class="font-black text-[12px] uppercase text-slate-400 tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2">
+                        <span id="icon-file-text"></span> Planning Parameters
+                    </h4>
+                    <div class="space-y-2 pt-2 flex-1">
+                        <div class="flex flex-col">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Target Description</label>
+                            <input type="text" id="form-target" placeholder="e.g. Segment 6" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex flex-col">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Vol (cc)</label>
+                                <input type="number" id="form-vol" step="0.01" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5 text-blue-600">LSF (%)</label>
+                                <input type="number" id="form-lsf" step="0.1" class="w-full px-3 py-1 bg-slate-50 border border-blue-100 rounded-lg text-sm font-black text-blue-700 outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Desired Dose (Gy)</label>
+                            <input type="number" id="form-dose" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-black text-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-slate-50">
+                            <div class="flex flex-col">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter">Infusion Date</label>
+                                    <span id="form-date-label" class="text-[12px] font-black text-blue-600 uppercase"></span>
+                                </div>
+                                <input type="date" id="form-date" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Infusion Time</label>
+                                <input type="time" id="form-time" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 no-print">
+                    <h4 class="font-black text-[13px] uppercase text-slate-400 tracking-wide mb-1 border-b border-slate-100 pb-1">
+                        <span id="icon-calendar-ref"></span>Reference Sunday
+                    </h4>
+                    <div class="grid grid-cols-2 gap-3 text-center pt-1">
+                        <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">1 Week Prior</button>
+                        <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">2 Weeks Prior</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Column: Results & Table -->
+            <div id="results-container" class="lg:col-span-6 flex flex-col gap-3"></div>
+
+            <!-- Right Column: Calendar -->
+            <div id="calendar-container" class="lg:col-span-3 flex flex-col h-full"></div>
+
+        </div>
+
+        <footer class="mt-4 pt-4 border-t border-slate-200 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">
+            University of Michigan • Department of Radiation Oncology
+        </footer>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // --- Icons Helper ---
+        const getIcon = (name, size = 18, className = "") => {
             const paths = {
-                'activity': <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
-                'refresh-cw': <g><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></g>,
-                'target': <g><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></g>,
-                'X': <path d="M18 6L6 18M6 6l12 12" />,
-                'file-text': <g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></g>,
-                'calendar': <g><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" height="6" /><line x1="3" y1="10" x2="21" y2="10" /></g>,
-                'package': <g><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g>,
-                'check': <polyline points="20 6 9 17 4 12" />,
-                'clipboard': <g><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></g>,
-                'loader-2': <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
-                'mouse-pointer-2': <g><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /><path d="M13 13l6 6" /></g>,
-                'layout': <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />,
-                'printer': <g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>
+                'activity': `<path d="M22 12h-4l-3 9L9 3l-3 9H2" />`,
+                'refresh-cw': `<g><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></g>`,
+                'target': `<g><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></g>`,
+                'x': `<path d="M18 6L6 18M6 6l12 12" />`,
+                'file-text': `<g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></g>`,
+                'calendar': `<g><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" height="6" /><line x1="3" y1="10" x2="21" y2="10" /></g>`,
+                'package': `<g><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g>`,
+                'check': `<polyline points="20 6 9 17 4 12" />`,
+                'printer': `<g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>`
             };
-            const key = name === 'X' || name === 'x' ? 'X' : name;
-            return (
-                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    {paths[key] || paths[name.toLowerCase()]}
-                </svg>
-            );
+            return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="${className}">${paths[name.toLowerCase()]}</svg>`;
         };
 
-        const App = () => {
-            const [timestamp, setTimestamp] = useState(new Date().toLocaleString());
-            const [cases, setCases] = useState([
-                { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '', weekOffset: 1, selectedVialSize: null }
-            ]);
-            const [activeCaseIndex, setActiveCaseIndex] = useState(0);
-            const [results, setResults] = useState(null);
+        // Static Icons Injection
+        document.getElementById('icon-activity-header').innerHTML = getIcon('activity', 32, 'text-blue-600');
+        document.getElementById('icon-printer').innerHTML = getIcon('printer', 14);
+        document.getElementById('icon-refresh').innerHTML = getIcon('refresh-cw', 14);
+        document.getElementById('icon-file-text').innerHTML = getIcon('file-text', 14);
+        document.getElementById('icon-calendar-ref').innerHTML = getIcon('calendar', 10, 'inline mr-2');
 
-            const tableRef = useRef(null);
-            const recommendedRowRef = useRef(null);
+        // --- State Management ---
+        const THERASPHERE_FACTOR = 50; 
+        const LIVER_DENSITY = 1.03; 
+        const Y90_HALF_LIFE_DAYS = 2.67; 
+        const RESIDUAL_EFFICIENCY = 0.98; 
+        const VIAL_MIN = 3.0;
+        const VIAL_MAX = 20.0;
+        const VIAL_STEP = 0.5;
 
-            const THERASPHERE_FACTOR = 50; 
-            const LIVER_DENSITY = 1.03; 
-            const Y90_HALF_LIFE_DAYS = 2.67; 
-            const RESIDUAL_EFFICIENCY = 0.98; 
-            const VIAL_MIN = 3.0;
-            const VIAL_MAX = 20.0;
-            const VIAL_STEP = 0.5;
+        let state = {
+            timestamp: new Date().toLocaleString(),
+            cases: [createNewCase()],
+            activeCaseIndex: 0,
+            results: null,
+            totalLungDose: 0
+        };
 
-            const handleNewSession = () => {
-                setCases([{ id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '', weekOffset: 1, selectedVialSize: null }]);
-                setActiveCaseIndex(0);
-                setResults(null);
-                setTimestamp(new Date().toLocaleString());
+        function createNewCase() {
+            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null };
+        }
+
+        // --- Core Calculation Logic ---
+        function getReferenceSunday(procDateStr, offsetWeeks) {
+            if (!procDateStr) return new Date();
+            try {
+                const parts = procDateStr.split('-').map(Number);
+                const procDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
+                const refSunday = new Date(procDate);
+                refSunday.setDate(procDate.getDate() - procDate.getDay());
+                if (offsetWeeks === 2) refSunday.setDate(refSunday.getDate() - 7);
+                refSunday.setHours(12, 0, 0, 0);
+                return refSunday;
+            } catch (e) { return new Date(); }
+        }
+
+        function calculateResults(data) {
+            const { targetVolume, lungShunt, desiredDose, procedureDate, procedureTime, weekOffset } = data;
+            if (!targetVolume || !desiredDose || !procedureDate) return null;
+
+            const massKg = (parseFloat(targetVolume) * LIVER_DENSITY) / 1000;
+            const shuntFraction = (parseFloat(lungShunt) || 0) / 100;
+            const liverShuntFactor = 1 - shuntFraction;
+            const activityAtTreatment = (parseFloat(desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * liverShuntFactor);
+            const procDateTime = new Date(`${procedureDate}T${procedureTime || '09:00'}:00`);
+            const refSunday = getReferenceSunday(procedureDate, weekOffset);
+            const daysElapsed = (procDateTime - refSunday) / (1000 * 60 * 60 * 24);
+            const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
+            const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
+            
+            const allOptions = [];
+            for (let vial = VIAL_MIN; vial <= VIAL_MAX; vial += VIAL_STEP) {
+                const vialAtProc = vial * Math.exp(-lambda * daysElapsed);
+                const resLiverDose = (vialAtProc * RESIDUAL_EFFICIENCY * THERASPHERE_FACTOR * liverShuntFactor) / massKg;
+                const resLungDose = THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * vialAtProc * shuntFraction;
+                const diff = ((resLiverDose - parseFloat(desiredDose)) / parseFloat(desiredDose)) * 100;
+                allOptions.push({ vialSize: vial, activityAtProc: vialAtProc, doseAtProc: resLiverDose, lungDose: resLungDose, diff: diff });
+            }
+            const closest = allOptions.reduce((prev, curr) => Math.abs(curr.vialSize - activityAtReference) < Math.abs(prev.vialSize - activityAtReference) ? curr : prev);
+            
+            return { activityAtTreatment, activityAtReference, autoRecommendedVial: closest.vialSize, refDate: refSunday, options: allOptions, daysElapsed };
+        }
+
+        function calculateBestWeek(caseData) {
+            const vol = parseFloat(caseData.targetVolume);
+            const dose = parseFloat(caseData.desiredDose);
+            const date = caseData.procedureDate;
+            if (!vol || !dose || !date) return 1;
+
+            const massKg = (vol * LIVER_DENSITY) / 1000;
+            const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
+            const actP = (dose * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFrac));
+            const procDT = new Date(`${date}T${caseData.procedureTime || '09:00'}:00`);
+            const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
+
+            const evaluateWeek = (offset) => {
+                const ref = getReferenceSunday(date, offset);
+                const days = (procDT - ref) / (1000 * 60 * 60 * 24);
+                const actRef = actP / Math.exp(-lambda * days);
+                if (actRef < VIAL_MIN) return (VIAL_MIN - actRef) * 10;
+                if (actRef > VIAL_MAX) return (actRef - VIAL_MAX) * 10;
+                const closestVial = Math.round(actRef / VIAL_STEP) * VIAL_STEP;
+                return Math.abs(actRef - closestVial);
             };
 
-            const getReferenceSunday = (procDateStr, offsetWeeks) => {
-                if (!procDateStr) return new Date();
-                try {
-                    const [year, month, day] = procDateStr.split('-').map(Number);
-                    const procDate = new Date(year, month - 1, day, 12, 0, 0); 
-                    const refSunday = new Date(procDate);
-                    refSunday.setDate(procDate.getDate() - procDate.getDay());
-                    if (offsetWeeks === 2) refSunday.setDate(refSunday.getDate() - 7);
-                    refSunday.setHours(12, 0, 0, 0);
-                    return refSunday;
-                } catch (e) { return new Date(); }
-            };
+            return evaluateWeek(2) < evaluateWeek(1) ? 2 : 1;
+        }
 
-            const calculateResults = useCallback((data) => {
-                const { targetVolume, lungShunt, desiredDose, procedureDate, procedureTime, weekOffset } = data;
-                if (!targetVolume || !desiredDose || !procedureDate) return null;
-                
-                const massKg = (parseFloat(targetVolume) * LIVER_DENSITY) / 1000;
-                const shuntFraction = (parseFloat(lungShunt) || 0) / 100;
-                const liverShuntFactor = 1 - shuntFraction;
-                const activityAtTreatment = (parseFloat(desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * liverShuntFactor);
-                const procDateTime = new Date(`${procedureDate}T${procedureTime || '12:00'}:00`);
-                const refSunday = getReferenceSunday(procedureDate, weekOffset);
-                const daysElapsed = (procDateTime - refSunday) / (1000 * 60 * 60 * 24);
+        function calculateTotalLungDose() {
+            state.totalLungDose = state.cases.reduce((acc, c) => {
+                if (!c.targetVolume || !c.desiredDose || !c.procedureDate) return acc;
+                const massKg = (parseFloat(c.targetVolume) * LIVER_DENSITY) / 1000;
+                const shuntFraction = (parseFloat(c.lungShunt) || 0) / 100;
+                const activityAtTreatment = (parseFloat(c.desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFraction));
+                const procDateTime = new Date(`${c.procedureDate}T${c.procedureTime || '09:00'}:00`);
+                const daysElapsed = (procDateTime - getReferenceSunday(c.procedureDate, c.weekOffset)) / (1000 * 60 * 60 * 24);
                 const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
                 const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
-                
-                const allOptions = [];
-                for (let vial = VIAL_MIN; vial <= VIAL_MAX; vial += VIAL_STEP) {
-                    const vialAtProc = vial * Math.exp(-lambda * daysElapsed);
-                    const resLiverDose = (vialAtProc * RESIDUAL_EFFICIENCY * THERASPHERE_FACTOR * liverShuntFactor) / massKg;
-                    const resLungDose = THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * vialAtProc * shuntFraction;
-                    const diff = ((resLiverDose - parseFloat(desiredDose)) / parseFloat(desiredDose)) * 100;
-                    allOptions.push({ vialSize: vial, activityAtProc: vialAtProc, doseAtProc: resLiverDose, lungDose: resLungDose, diff: diff });
+                let vialSizeToUse = c.selectedVialSize || Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(activityAtReference / VIAL_STEP) * VIAL_STEP));
+                const vialAtProc = vialSizeToUse * Math.exp(-lambda * daysElapsed);
+                return acc + (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * vialAtProc * shuntFraction);
+            }, 0);
+        }
+
+        // --- DOM Update Functions ---
+        function updateAllUI() {
+            document.getElementById('timestamp-display').textContent = state.timestamp;
+            const activeCase = state.cases[state.activeCaseIndex] || state.cases[0];
+
+            // 1. Auto-adjust best week offset if form valid
+            if (activeCase.targetVolume && activeCase.procedureDate && activeCase.desiredDose) {
+                const bestWeek = calculateBestWeek(activeCase);
+                if (activeCase.weekOffset !== bestWeek && !activeCase.manualWeekOverride) {
+                    activeCase.weekOffset = bestWeek;
+                    activeCase.selectedVialSize = null;
                 }
-                const closest = allOptions.reduce((prev, curr) => Math.abs(curr.vialSize - activityAtReference) < Math.abs(prev.vialSize - activityAtReference) ? curr : prev);
+            }
+
+            // 2. Compute results for active case & total lung dose
+            state.results = calculateResults(activeCase);
+            calculateTotalLungDose();
+
+            // 3. Render parts
+            renderTabs();
+            syncFormWithState();
+            renderResults();
+            renderCalendar();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+
+            state.cases.forEach((c, idx) => {
+                const isActive = state.activeCaseIndex === idx;
+                const btnStyle = isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border-slate-200 hover:border-blue-200 hover:bg-slate-50';
+                const noPrintClass = !isActive ? 'no-print' : '';
+
+                const div = document.createElement('div');
+                div.className = 'relative group flex-shrink-0';
+                div.innerHTML = `
+                    <button onclick="setActiveCase(${idx})" class="pl-4 pr-12 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 border-2 ${btnStyle} ${noPrintClass}">
+                        ${getIcon('target', 12)}
+                        ${c.target || `Infusion #${idx + 1}`}
+                    </button>
+                    <button onclick="removeCase('${c.id}', event)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all no-print ${isActive ? 'text-white hover:bg-white/20' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}" title="Remove">
+                        ${getIcon('x', 16)}
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+
+            // Add Infusion Button
+            const addBtn = document.createElement('button');
+            addBtn.onclick = addCase;
+            addBtn.className = "px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-500 border-2 border-dashed border-slate-300 hover:bg-slate-200 transition-all flex-shrink-0 no-print";
+            addBtn.innerText = "+ Add Infusion";
+            container.appendChild(addBtn);
+        }
+
+        function syncFormWithState() {
+            const activeCase = state.cases[state.activeCaseIndex];
+            
+            // Only update DOM values if they differ, preserving cursor position if active typing
+            const ids = { 'form-target': 'target', 'form-vol': 'targetVolume', 'form-lsf': 'lungShunt', 'form-dose': 'desiredDose', 'form-date': 'procedureDate', 'form-time': 'procedureTime' };
+            for (const [domId, key] of Object.entries(ids)) {
+                const el = document.getElementById(domId);
+                if (el.value !== activeCase[key]) el.value = activeCase[key] || '';
+            }
+
+            // Update Date Label
+            let dateLabel = "";
+            if (activeCase.procedureDate) {
+                const date = new Date(activeCase.procedureDate + "T12:00:00");
+                if (!isNaN(date.getTime())) dateLabel = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+            }
+            document.getElementById('form-date-label').textContent = dateLabel;
+
+            // Update Reference Sunday Buttons
+            const btn1 = document.getElementById('btn-week-1');
+            const btn2 = document.getElementById('btn-week-2');
+            
+            const activeClass = 'bg-blue-600 border-blue-600 text-white shadow-md';
+            const inactiveClass = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
+
+            btn1.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 1 ? activeClass : inactiveClass}`;
+            btn2.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 2 ? activeClass : inactiveClass}`;
+        }
+
+        function renderResults() {
+            const container = document.getElementById('results-container');
+            const activeCase = state.cases[state.activeCaseIndex];
+
+            if (!state.results) {
+                container.innerHTML = `
+                    <div class="h-full min-h-[450px] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 no-print">
+                        <div class="flex flex-col items-center px-12 text-center">
+                            ${getIcon('activity', 48, 'mb-4 text-slate-300')}
+                            <p class="text-lg font-black text-slate-700 mb-2">Awaiting Parameters</p>
+                            <p class="text-sm italic mb-6">Enter clinical data in the left panel to generate results.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const headerData = state.results.options.find(o => o.vialSize === (activeCase.selectedVialSize || state.results.autoRecommendedVial));
+            if (!headerData) return;
+
+            const isManual = activeCase.selectedVialSize && activeCase.selectedVialSize !== state.results.autoRecommendedVial;
+            
+            let tableRowsHtml = state.results.options.map((opt, i) => {
+                const active = (activeCase.selectedVialSize || state.results.autoRecommendedVial) === opt.vialSize;
+                const isRec = opt.vialSize === state.results.autoRecommendedVial;
+                const isHighVariance = Math.abs(opt.diff) > 5;
+                const vStyle = active ? (isHighVariance ? 'bg-red-500 text-white shadow-sm' : 'bg-emerald-500 text-white shadow-sm') : (isHighVariance ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700');
                 
-                return { 
-                    activityAtTreatment, 
-                    activityAtReference, 
-                    autoRecommendedVial: closest.vialSize, 
-                    refDate: refSunday, 
-                    options: allOptions, 
-                    daysElapsed 
-                };
-            }, []);
+                return `
+                    <tr id="${isRec ? 'recommended-row' : ''}" onclick="setVialSize(${opt.vialSize})" class="border-b border-slate-50 cursor-pointer transition-all ${active ? 'bg-blue-600 text-white shadow-inner' : 'hover:bg-slate-50'}">
+                        <td class="px-6 py-1 font-bold text-base font-black flex items-center gap-2">
+                            ${opt.vialSize.toFixed(1)} 
+                            ${isRec ? `<span class="text-[10px] px-1 rounded font-black uppercase ${active ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-700'}">REC</span>` : ''} 
+                            ${active ? getIcon('check', 14, 'ml-auto no-print') : ''}
+                        </td>
+                        <td class="px-6 py-1 text-sm font-bold ${active ? 'text-white' : 'text-slate-700'}">${opt.doseAtProc.toFixed(1)}</td>
+                        <td class="px-6 py-1 text-sm font-bold ${active ? 'text-blue-100' : 'opacity-80'}">${opt.lungDose.toFixed(2)}</td>
+                        <td class="px-6 py-1"><span class="font-mono px-2 py-0.5 rounded-full text-[13px] font-black ${vStyle}">${opt.diff > 0 ? '+' : ''}${opt.diff.toFixed(1)}%</span></td>
+                    </tr>
+                `;
+            }).join('');
 
-            const totalLungDose = useMemo(() => {
-                return cases.reduce((acc, c) => {
-                    const { targetVolume, lungShunt, desiredDose, procedureDate, procedureTime, weekOffset, selectedVialSize } = c;
-                    if (!targetVolume || !desiredDose || !procedureDate) return acc;
-                    const massKg = (parseFloat(targetVolume) * LIVER_DENSITY) / 1000;
-                    const shuntFraction = (parseFloat(lungShunt) || 0) / 100;
-                    const activityAtTreatment = (parseFloat(desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFraction));
-                    const procDateTime = new Date(`${procedureDate}T${procedureTime || '12:00'}:00`);
-                    const daysElapsed = (procDateTime - getReferenceSunday(procedureDate, weekOffset)) / (1000 * 60 * 60 * 24);
-                    const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
-                    const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
-                    let vialSizeToUse = selectedVialSize || Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(activityAtReference / VIAL_STEP) * VIAL_STEP));
-                    const vialAtProc = vialSizeToUse * Math.exp(-lambda * daysElapsed);
-                    return acc + (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * vialAtProc * shuntFraction);
-                }, 0);
-            }, [cases]);
-
-            const handlePrint = () => {
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                    alert("Please allow popups to generate the report.");
-                    return;
-                }
-
-                const formatDate = (dateStr) => {
-                    if (!dateStr) return 'N/A';
-                    const d = new Date(dateStr + "T12:00:00");
-                    const day = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-                    return `${dateStr} [${day}]`;
-                };
-                const formatRefDate = (dateObj) => {
-                    if (!dateObj) return 'N/A';
-                    const dateStr = dateObj.toISOString().split('T')[0];
-                    const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-                    return `${dateStr} [${day}]`;
-                };
-                const formatTime = (timeStr) => {
-                    if (!timeStr) return '12:00 PM';
-                    let [hours, minutes] = timeStr.split(':').map(Number);
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12 || 12;
-                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-                };
-
-                const reportsHTML = cases.map((currentCase, index) => {
-                    const caseResults = calculateResults(currentCase);
-                    if (!caseResults || !caseResults.options) return '';
-
-                    const selectedVialSize = currentCase.selectedVialSize || caseResults.autoRecommendedVial;
-                    const headerData = caseResults.options.find(o => o.vialSize === selectedVialSize);
-                    const selectedIdx = caseResults.options.findIndex(o => o.vialSize === selectedVialSize);
-                    const tableRows = caseResults.options.slice(Math.max(0, selectedIdx - 1), Math.min(caseResults.options.length, selectedIdx + 2));
-
-                    return `
-                        <div class="report-page ${index < cases.length - 1 ? 'page-break' : ''}">
-                        <header class="flex justify-between items-end border-b-2 border-slate-800 pb-3 mb-6">
-                            <div>
-                            <h1 class="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-tight">Choonik Lee Y90 2nd Check</h1>
-                            <p class="text-slate-500 font-bold text-sm">University of Michigan • Department of Radiation Oncology</p>
+            container.innerHTML = `
+                <div class="bg-slate-900 rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/5">
+                    <div class="relative z-10 flex flex-col space-y-3 items-start text-left">
+                        <div class="w-full">
+                            <div class="flex items-center gap-2 mb-1 opacity-100">
+                                ${getIcon('package', 16, 'text-blue-400')}
+                                <span class="text-blue-300 text-[14px] font-black uppercase tracking-tight">Calculation Results</span>
                             </div>
-                            <div class="text-right">
-                            <p class="text-[9px] font-black uppercase text-slate-400">Report Timestamp</p>
-                            <p class="text-xs font-bold">${new Date().toLocaleString()}</p>
-                            ${cases.length > 1 ? `<p class="text-[10px] font-bold text-blue-600 mt-1 uppercase">Infusion ${index + 1} of ${cases.length}</p>` : ''}
-                            </div>
-                        </header>
-                        <div class="grid grid-cols-2 gap-8 mb-6">
-                            <div>
-                            <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Planning Parameters</h3>
-                            <table class="w-full text-xs">
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Target Description</td><td class="py-1 font-black text-right">${currentCase.target || 'N/A'}</td></tr>
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Target Volume</td><td class="py-1 font-black text-right">${currentCase.targetVolume} cc</td></tr>
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Lung Shunt Fraction</td><td class="py-1 font-black text-right">${currentCase.lungShunt}%</td></tr>
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Desired Target Dose</td><td class="py-1 font-black text-right">${currentCase.desiredDose} Gy</td></tr>
-                            </table>
-                            </div>
-                            <div>
-                            <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Infusion Timing</h3>
-                            <table class="w-full text-xs">
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Date</td><td class="py-1 font-black text-right">${formatDate(currentCase.procedureDate)}</td></tr>
-                                <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Time</td><td class="py-1 font-black text-right">${formatTime(currentCase.procedureTime)}</td></tr>
-                            </table>
+                            <div class="flex flex-col space-y-3">
+                                <div class="flex flex-col">
+                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-0.5">Vial Size to Order</span>
+                                    <div class="flex items-center gap-4">
+                                        <span class="text-3xl md:text-4xl font-black tracking-tighter text-white leading-none">${headerData.vialSize.toFixed(1)} GBq</span>
+                                        ${isManual ? `<span class="text-[10px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black uppercase no-print">Manual Selection</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col border-t border-white/5 pt-3">
+                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-0.5">Calibration Reference</span>
+                                    <span class="text-base font-black text-white leading-none">
+                                        ${state.results.refDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} [${state.results.refDate.toLocaleDateString('en-US', { weekday: 'short' })}] | 12:00 PM ET
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-8 border-t border-white/5 pt-3">
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5 ">Target Dose</span>
+                                        <span class="text-base font-black text-blue-400 leading-none">${headerData.doseAtProc.toFixed(1)} Gy</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5">Activity @ Infusion</span>
+                                        <span class="text-base font-black text-blue-400 leading-none">${headerData.activityAtProc.toFixed(3)} GBq</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5">Lung Dose ${state.cases.length > 1 ? '(Single / Cumulative)' : ''}</span>
+                                        <div class="flex items-baseline gap-0">
+                                            <span class="text-base font-black text-blue-400 leading-none">${headerData.lungDose.toFixed(2)} Gy</span>
+                                            ${state.cases.length > 1 ? `
+                                            <span class="text-base font-black ${state.totalLungDose > 30 ? 'text-red-400' : 'text-slate-500'}">
+                                                / ${state.totalLungDose.toFixed(2)} Gy
+                                            </span>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-slate-100 p-6 rounded-xl mb-6 border border-slate-200">
-                            <h2 class="text-blue-600 text-[10px] font-black uppercase tracking-widest mb-3">Independent Calculation Summary</h2>
-                            <div class="grid grid-cols-3 gap-6">
-                            <div class="text-center border-r border-slate-200">
-                                <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Recommended Vial Size</p>
-                                <p class="text-3xl font-black text-black">${headerData.vialSize.toFixed(1)} <span class="text-base font-normal">GBq</span></p>
-                                <p class="text-[10px] font-bold text-slate-600 mt-1 leading-tight">Calibration Reference:<br/>${formatRefDate(caseResults?.refDate)}</p>
-                            </div>
-                            <div class="text-center border-r border-slate-200">
-                                <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Activity at Infusion</p>
-                                <p class="text-3xl font-black text-blue-600">${headerData.activityAtProc.toFixed(3)} <span class="text-base font-normal">GBq</span></p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Planned Target Dose</p>
-                                <p class="text-3xl font-black text-emerald-600">${headerData.doseAtProc.toFixed(1)} <span class="text-base font-normal">Gy</span></p>
-                            </div>
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[11px] leading-relaxed">
-                            <h3 class="text-[10px] font-black uppercase text-slate-500 mb-1">Calculation Formula</h3>
-                            <p class="font-mono text-slate-700">Target Dose (Gy) = [Activity<sub>Tx</sub> (GBq) × 50 × 0.98 × (1 - LSF)] / Mass<sub>Target</sub> (kg)</p>
-                            <p class="font-mono text-slate-700 mt-1">Where Mass<sub>Target</sub> (kg) = [Volume (cc) × 1.03] / 1000</p>
-                            </div>
-                            <h3 class="text-[10px] font-black uppercase text-slate-400 mb-2 border-b pb-1 tracking-tight">Comparative Sensitivity Analysis (Adjacent Sizes)</h3>
-                            <table class="w-full text-left border-collapse border border-slate-100 text-xs">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                <th class="p-2 border font-black text-[10px] text-slate-700">Vial Size (GBq)</th>
-                                <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Target Dose (Gy)</th>
-                                <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Lung Dose (Gy)</th>
-                                <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Variance</th>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+                    <div class="p-2 border-b bg-slate-50 flex items-center justify-between">
+                        <h3 class="font-black text-slate-700 text-[12px] uppercase">Results with adjacent vial sizes</h3>
+                    </div>
+                    <div class="overflow-y-auto h-[170px] custom-scrollbar" id="table-scroll-area">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-slate-50 z-10 border-b">
+                                <tr class="text-slate-400 font-black text-[12px]">
+                                    <th class="px-6 py-1">Vial Size (GBq)</th>
+                                    <th class="px-6 py-1">Target (Gy)</th>
+                                    <th class="px-6 py-1">Lung (Gy)</th>
+                                    <th class="px-6 py-1">Variance</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${tableRows.map(opt => `
-                                <tr class="${opt.vialSize === headerData.vialSize ? 'bg-blue-50 font-black text-blue-900' : ''}">
-                                    <td class="p-2 border">${opt.vialSize.toFixed(1)} ${opt.vialSize === caseResults.autoRecommendedVial ? '(REC)' : ''}</td>
-                                    <td class="p-2 border text-center">${opt.doseAtProc.toFixed(1)}</td>
-                                    <td class="p-2 border text-center">${opt.lungDose.toFixed(2)}</td>
-                                    <td class="p-2 border text-center font-mono ${Math.abs(opt.diff) > 5 ? 'text-red-600' : 'text-emerald-600'}">${opt.diff > 0 ? '+' : ''}${opt.diff.toFixed(1)}%</td>
-                                </tr>
-                                `).join('')}
+                            <tbody class="text-[11px] font-medium">
+                                ${tableRowsHtml}
                             </tbody>
-                            </table>
-                        </div>
-                        <footer class="mt-auto pt-3 border-t border-slate-200 text-center text-[9px] text-slate-400 uppercase tracking-widest leading-normal">
-                            This calculation is an independent secondary check based on the MIRD model.<br/>
-                            Final treatment decisions are the responsibility of the authorized user.
-                        </footer>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // Scroll recommended row into view
+            setTimeout(() => {
+                const recRow = document.getElementById('recommended-row');
+                if (recRow) recRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 10);
+        }
+
+        function renderCalendar() {
+            const container = document.getElementById('calendar-container');
+            const activeCase = state.cases[state.activeCaseIndex];
+
+            let calendarHtml = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex-1 flex flex-col">
+                    <h4 class="font-black text-[12px] uppercase text-slate-400 tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2 mb-1">
+                        ${getIcon('calendar', 14)} Infusion Calendar
+                    </h4>
+            `;
+
+            if (!activeCase.procedureDate) {
+                calendarHtml += `<div class="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase tracking-widest text-center">Set Infusion Date to view calendar</div>`;
+            } else {
+                try {
+                    const [y, m, d] = activeCase.procedureDate.split('-').map(Number);
+                    const procDateObj = new Date(y, m - 1, d, 12, 0, 0);
+                    
+                    const startDay = new Date(procDateObj);
+                    startDay.setDate(procDateObj.getDate() - 7); 
+                    startDay.setDate(startDay.getDate() - startDay.getDay()); 
+                    
+                    const endDay = new Date(procDateObj);
+                    endDay.setDate(procDateObj.getDate() + 7);
+                    endDay.setDate(endDay.getDate() + (6 - endDay.getDay())); 
+                    
+                    const calendarDays = [];
+                    let current = new Date(startDay);
+                    while (current <= endDay) {
+                        calendarDays.push(new Date(current));
+                        current.setDate(current.getDate() + 1);
+                    }
+
+                    const monthsInView = Array.from(new Set(calendarDays.map(d => d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase())));
+                    const calendarMonthHeader = monthsInView.join('-');
+
+                    let daysGridHtml = calendarDays.map((date) => {
+                        const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+                        const isProcDate = isSameDay(date, procDateObj);
+                        const isRefSunday = state.results && state.results.refDate && isSameDay(date, state.results.refDate);
+                        const isCurrentMonth = date.getMonth() === procDateObj.getMonth();
+                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                        let classes = `relative h-8 flex items-center justify-center text-[11px] font-bold rounded-lg transition-all `;
+                        if (isProcDate) classes += 'bg-blue-600 text-white shadow-md z-10 ';
+                        else if (isRefSunday) classes += 'border-2 border-amber-400 bg-amber-50 shadow-sm ';
+                        else if (isWeekend) classes += 'bg-emerald-50/80 text-emerald-700 ';
+                        else classes += 'bg-slate-50 text-slate-700 ';
+                        
+                        classes += (!isCurrentMonth ? 'opacity-30' : 'opacity-100');
+
+                        return `
+                            <div class="${classes}">
+                                ${date.getDate()}
+                                ${isRefSunday && !isProcDate ? `<div class="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                    calendarHtml += `
+                        <div class="space-y-3 pt-2">
+                            <div class="flex justify-center"><span class="text-slate-400 text-xs font-black tracking-[0.2em] uppercase">${calendarMonthHeader}</span></div>
+                            <div class="relative">
+                                <div class="grid grid-cols-7 gap-1 text-center mb-1">
+                                    ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => `<span class="text-[10px] font-black text-slate-400">${day}</span>`).join('')}
+                                </div>
+                                <div class="grid grid-cols-7 gap-1">
+                                    ${daysGridHtml}
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-slate-100 space-y-1.5">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
+                                    <div class="w-3.5 h-3.5 bg-blue-600 rounded shadow-sm"></div>
+                                    <span>Infusion Date</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
+                                    <div class="w-3.5 h-3.5 border-2 border-amber-400 rounded bg-amber-50"></div>
+                                    <span>Calibration Sunday</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
+                                    <div class="w-3.5 h-3.5 bg-emerald-50 rounded border border-emerald-100"></div>
+                                    <span>Weekend</span>
+                                </div>
+                            </div>
                         </div>
                     `;
-                }).join('');
-                
-                // Breaking up script tag to prevent premature script termination
-                const fullHtml = `
+                } catch (e) {
+                    calendarHtml += `<div class="text-red-500 text-xs">Error parsing date</div>`;
+                }
+            }
+
+            calendarHtml += `</div>`;
+            container.innerHTML = calendarHtml;
+        }
+
+        // --- Interaction Handlers ---
+        function handleInput(field, value) {
+            state.cases[state.activeCaseIndex][field] = value;
+            updateAllUI();
+        }
+
+        function setActiveCase(index) {
+            state.activeCaseIndex = index;
+            updateAllUI();
+        }
+
+        function addCase() {
+            state.cases.push(createNewCase());
+            state.activeCaseIndex = state.cases.length - 1;
+            updateAllUI();
+        }
+
+        function removeCase(id, e) {
+            e.stopPropagation();
+            if (state.cases.length <= 1) {
+                state.cases = [createNewCase()];
+            } else {
+                const indexToRemove = state.cases.findIndex(c => c.id === id);
+                state.cases = state.cases.filter(c => c.id !== id);
+                if (state.activeCaseIndex === indexToRemove) state.activeCaseIndex = Math.max(0, indexToRemove - 1);
+                else if (indexToRemove < state.activeCaseIndex) state.activeCaseIndex--;
+            }
+            updateAllUI();
+        }
+
+        function setWeekOffset(offset) {
+            state.cases[state.activeCaseIndex].weekOffset = offset;
+            state.cases[state.activeCaseIndex].manualWeekOverride = true; 
+            state.cases[state.activeCaseIndex].selectedVialSize = null;
+            updateAllUI();
+        }
+
+        function setVialSize(size) {
+            state.cases[state.activeCaseIndex].selectedVialSize = size;
+            updateAllUI();
+        }
+
+        function handleNewSession() {
+            state.cases = [createNewCase()];
+            state.activeCaseIndex = 0;
+            state.results = null;
+            state.timestamp = new Date().toLocaleString();
+            updateAllUI();
+        }
+
+        function handlePrint() {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert("Please allow popups to generate the report.");
+                return;
+            }
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                const d = new Date(dateStr + "T12:00:00");
+                const day = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                return `${dateStr} [${day}]`;
+            };
+            const formatRefDate = (dateObj) => {
+                if (!dateObj) return 'N/A';
+                const dateStr = dateObj.toISOString().split('T')[0];
+                const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                return `${dateStr} [${day}]`;
+            };
+            const formatTime = (timeStr) => {
+                if (!timeStr) return '09:00 AM';
+                let [hours, minutes] = timeStr.split(':').map(Number);
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            };
+
+            const reportsHTML = state.cases.map((currentCase, index) => {
+                const caseResults = calculateResults(currentCase);
+                if (!caseResults || !caseResults.options) return '';
+
+                const selectedVialSize = currentCase.selectedVialSize || caseResults.autoRecommendedVial;
+                const headerData = caseResults.options.find(o => o.vialSize === selectedVialSize);
+                const selectedIdx = caseResults.options.findIndex(o => o.vialSize === selectedVialSize);
+                const tableRows = caseResults.options.slice(Math.max(0, selectedIdx - 1), Math.min(caseResults.options.length, selectedIdx + 2));
+
+                return `
+                    <div class="report-page ${index < state.cases.length - 1 ? 'page-break' : ''}">
+                    <header class="flex justify-between items-end border-b-2 border-slate-800 pb-3 mb-6">
+                        <div>
+                        <h1 class="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-tight">Choonik Lee Y90 2nd Check</h1>
+                        <p class="text-slate-500 font-bold text-sm">University of Michigan • Department of Radiation Oncology</p>
+                        </div>
+                        <div class="text-right">
+                        <p class="text-[9px] font-black uppercase text-slate-400">Report Timestamp</p>
+                        <p class="text-xs font-bold">${new Date().toLocaleString()}</p>
+                        ${state.cases.length > 1 ? `<p class="text-[10px] font-bold text-blue-600 mt-1 uppercase">Infusion ${index + 1} of ${state.cases.length}</p>` : ''}
+                        </div>
+                    </header>
+
+                    <div class="grid grid-cols-2 gap-8 mb-6">
+                        <div>
+                        <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Planning Parameters</h3>
+                        <table class="w-full text-xs">
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Target Description</td><td class="py-1 font-black text-right">${currentCase.target || 'N/A'}</td></tr>
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Target Volume</td><td class="py-1 font-black text-right">${currentCase.targetVolume} cc</td></tr>
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Lung Shunt Fraction</td><td class="py-1 font-black text-right">${currentCase.lungShunt}%</td></tr>
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Desired Target Dose</td><td class="py-1 font-black text-right">${currentCase.desiredDose} Gy</td></tr>
+                        </table>
+                        </div>
+                        <div>
+                        <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Infusion Timing</h3>
+                        <table class="w-full text-xs">
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Date</td><td class="py-1 font-black text-right">${formatDate(currentCase.procedureDate)}</td></tr>
+                            <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Time</td><td class="py-1 font-black text-right">${formatTime(currentCase.procedureTime)}</td></tr>
+                        </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-100 p-6 rounded-xl mb-6 border border-slate-200">
+                        <h2 class="text-blue-600 text-[10px] font-black uppercase tracking-widest mb-3">Independent Calculation Summary</h2>
+                        <div class="grid grid-cols-3 gap-6">
+                        <div class="text-center border-r border-slate-200">
+                            <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Recommended Vial Size</p>
+                            <p class="text-3xl font-black text-black">${headerData.vialSize.toFixed(1)} <span class="text-base font-normal">GBq</span></p>
+                            <p class="text-[10px] font-bold text-slate-600 mt-1 leading-tight">Calibration Reference:<br/>${formatRefDate(caseResults.refDate)}</p>
+                        </div>
+                        <div class="text-center border-r border-slate-200">
+                            <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Activity at Infusion</p>
+                            <p class="text-3xl font-black text-blue-600">${headerData.activityAtProc.toFixed(3)} <span class="text-base font-normal">GBq</span></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Planned Target Dose</p>
+                            <p class="text-3xl font-black text-emerald-600">${headerData.doseAtProc.toFixed(1)} <span class="text-base font-normal">Gy</span></p>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[11px] leading-relaxed">
+                        <h3 class="text-[10px] font-black uppercase text-slate-500 mb-1">Calculation Formula</h3>
+                        <p class="font-mono text-slate-700">
+                            Target Dose (Gy) = [Activity<sub>Tx</sub> (GBq) × 50 × 0.98 × (1 - LSF)] / Mass<sub>Target</sub> (kg)
+                        </p>
+                        <p class="font-mono text-slate-700 mt-1">
+                            Where Mass<sub>Target</sub> (kg) = [Volume (cc) × 1.03] / 1000
+                        </p>
+                        </div>
+
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 mb-2 border-b pb-1 tracking-tight">Comparative Sensitivity Analysis (Adjacent Sizes)</h3>
+                        <table class="w-full text-left border-collapse border border-slate-100 text-xs">
+                        <thead class="bg-slate-50">
+                            <tr>
+                            <th class="p-2 border font-black text-[10px] text-slate-700">Vial Size (GBq)</th>
+                            <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Target Dose (Gy)</th>
+                            <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Lung Dose (Gy)</th>
+                            <th class="p-2 border font-black text-[10px] text-slate-700 text-center">Variance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows.map(opt => `
+                            <tr class="${opt.vialSize === headerData.vialSize ? 'bg-blue-50 font-black text-blue-900' : ''}">
+                                <td class="p-2 border">${opt.vialSize.toFixed(1)} ${opt.vialSize === caseResults.autoRecommendedVial ? '(REC)' : ''}</td>
+                                <td class="p-2 border text-center">${opt.doseAtProc.toFixed(1)}</td>
+                                <td class="p-2 border text-center">${opt.lungDose.toFixed(2)}</td>
+                                <td class="p-2 border text-center font-mono ${Math.abs(opt.diff) > 5 ? 'text-red-600' : 'text-emerald-600'}">
+                                ${opt.diff > 0 ? '+' : ''}${opt.diff.toFixed(1)}%
+                                </td>
+                            </tr>
+                            `).join('')}
+                        </tbody>
+                        </table>
+                    </div>
+
+                    <footer class="mt-auto pt-3 border-t border-slate-200 text-center text-[9px] text-slate-400 uppercase tracking-widest leading-normal">
+                        This calculation is an independent secondary check based on the MIRD model.<br/>
+                        Final treatment decisions are the responsibility of the authorized user.
+                    </footer>
+                    </div>
+                `;
+            }).join('');
+            
+            const fullHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Y90 Multi-Infusion Plan</title>
-                    <script src="https://cdn.tailwindcss.com"><` + `/script>
-                    <style>
+                <title>Y90 Multi-Infusion Plan</title>
+                <script src="https://cdn.tailwindcss.com"><\/script>
+                <style>
                     @media print { 
-                        @page { size: portrait; margin: 0.5cm; } 
-                        body { padding: 0; }
-                        .page-break { page-break-after: always; display: block; height: 0; }
-                        .report-page { min-height: 95vh; display: flex; flex-direction: column; padding: 1.5cm; }
+                    @page { size: portrait; margin: 0.5cm; } 
+                    body { padding: 0; }
+                    .page-break { page-break-after: always; display: block; height: 0; }
+                    .report-page { min-height: 95vh; display: flex; flex-direction: column; padding: 1.5cm; }
                     }
                     @media screen {
-                        .report-page { border-bottom: 4px dashed #ccc; margin-bottom: 2rem; padding: 2rem; }
+                    .report-page { border-bottom: 4px dashed #ccc; margin-bottom: 2rem; padding: 2rem; }
                     }
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; }
                     .report-container { max-width: 850px; margin: 0 auto; }
-                    </style>
+                </style>
                 </head>
                 <body class="bg-white">
-                    <div class="report-container">${reportsHTML || '<p class="p-10 text-center font-bold text-red-600">No complete calculation data available to print.</p>'}</div>
-                    <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };<` + `/script>
+                <div class="report-container">
+                    ${reportsHTML || '<p class="p-10 text-center font-bold text-red-600">No complete calculation data available to print.</p>'}
+                </div>
+                <script>
+                    window.onload = () => { setTimeout(() => { window.print(); }, 500); };
+                <\/script>
                 </body>
                 </html>
-                `;
+            `;
 
-                printWindow.document.write(fullHtml);
-                printWindow.document.close();
-            };
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+        }
 
-            const removeCase = (id, e) => {
-                e.preventDefault(); e.stopPropagation();
-                setCases(prev => {
-                    if (prev.length <= 1) return [{ id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '', weekOffset: 1, selectedVialSize: null }];
-                    const indexToRemove = prev.findIndex(c => c.id === id);
-                    const newCases = prev.filter(c => c.id !== id);
-                    if (activeCaseIndex === indexToRemove) setActiveCaseIndex(Math.max(0, indexToRemove - 1));
-                    else if (indexToRemove < activeCaseIndex) setActiveCaseIndex(activeCaseIndex - 1);
-                    return newCases;
-                });
-            };
+        // --- Event Listeners Initialization ---
+        document.getElementById('form-target').addEventListener('input', (e) => handleInput('target', e.target.value));
+        document.getElementById('form-vol').addEventListener('input', (e) => handleInput('targetVolume', e.target.value));
+        document.getElementById('form-lsf').addEventListener('input', (e) => handleInput('lungShunt', e.target.value));
+        document.getElementById('form-dose').addEventListener('input', (e) => handleInput('desiredDose', e.target.value));
+        document.getElementById('form-date').addEventListener('change', (e) => handleInput('procedureDate', e.target.value));
+        document.getElementById('form-time').addEventListener('change', (e) => handleInput('procedureTime', e.target.value));
 
-            const getDayLabel = (dateStr) => {
-                if (!dateStr) return "";
-                const date = new Date(dateStr + "T12:00:00");
-                return isNaN(date.getTime()) ? "" : date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-            };
+        // Initial render
+        updateAllUI();
 
-            const calculateBestWeek = useCallback((caseData) => {
-                const vol = parseFloat(caseData.targetVolume);
-                const dose = parseFloat(caseData.desiredDose);
-                const date = caseData.procedureDate;
-                if (!vol || !dose || !date) return 1;
-                const massKg = (vol * LIVER_DENSITY) / 1000;
-                const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
-                const actP = (dose * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFrac));
-                const procDT = new Date(`${date}T${caseData.procedureTime || '12:00'}:00`);
-                const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
-                const evaluateWeek = (offset) => {
-                    const ref = getReferenceSunday(date, offset);
-                    const days = (procDT - ref) / (1000 * 60 * 60 * 24);
-                    const actRef = actP / Math.exp(-lambda * days);
-                    if (actRef < VIAL_MIN) return (VIAL_MIN - actRef) * 10;
-                    if (actRef > VIAL_MAX) return (actRef - VIAL_MAX) * 10;
-                    const closestVial = Math.round(actRef / VIAL_STEP) * VIAL_STEP;
-                    return Math.abs(actRef - closestVial);
-                };
-                return evaluateWeek(2) < evaluateWeek(1) ? 2 : 1;
-            }, []);
-
-            const activeCase = cases[activeCaseIndex] || cases[0];
-            const updateActiveCase = (updates) => {
-                setCases(prev => prev.map((c, i) => i === activeCaseIndex ? { ...c, ...updates } : c));
-            };
-
-            useEffect(() => {
-                if (activeCase && activeCase.targetVolume && activeCase.procedureDate && activeCase.desiredDose) {
-                    const bestWeek = calculateBestWeek(activeCase);
-                    if (activeCase.weekOffset !== bestWeek) updateActiveCase({ weekOffset: bestWeek, selectedVialSize: null });
-                }
-            }, [activeCaseIndex, activeCase?.targetVolume, activeCase?.desiredDose, activeCase?.procedureDate, calculateBestWeek]);
-
-            useEffect(() => { if (activeCase) setResults(calculateResults(activeCase)); }, [activeCase, calculateResults]);
-
-            useEffect(() => {
-                if (results && recommendedRowRef.current) {
-                    recommendedRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, [results]);
-
-            const headerData = useMemo(() => {
-                if (!results || !activeCase) return null;
-                return results.options.find(o => o.vialSize === (activeCase.selectedVialSize || results.autoRecommendedVial));
-            }, [results, activeCase]);
-
-            const calendarDays = useMemo(() => {
-                if (!activeCase?.procedureDate) return [];
-                try {
-                    const [y, m, d] = activeCase.procedureDate.split('-').map(Number);
-                    const procDate = new Date(y, m - 1, d, 12, 0, 0);
-                    const startDay = new Date(procDate);
-                    startDay.setDate(procDate.getDate() - 7); 
-                    startDay.setDate(startDay.getDate() - startDay.getDay()); 
-                    const endDay = new Date(procDate);
-                    endDay.setDate(procDate.getDate() + 7);
-                    endDay.setDate(endDay.getDate() + (6 - endDay.getDay())); 
-                    const days = [];
-                    let current = new Date(startDay);
-                    while (current <= endDay) { days.push(new Date(current)); current.setDate(current.getDate() + 1); }
-                    return days;
-                } catch (e) { return []; }
-            }, [activeCase?.procedureDate]);
-
-            const calendarMonthHeader = useMemo(() => {
-                if (calendarDays.length === 0) return "";
-                return Array.from(new Set(calendarDays.map(d => d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()))).join('-');
-            }, [calendarDays]);
-
-            const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
-
-            return (
-                <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-3 md:p-4 outline-none">
-                <div className="max-w-7xl mx-auto">
-                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
-                    <div className="flex-1">
-                        <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
-                        <Icon name="activity" className="text-blue-600" size={32} />
-                        TheraSphere Plan 2nd Checker
-                        </h1>
-                        <div className="flex items-center gap-4 mt-0.5">
-                        <p className="text-slate-500 text-sm font-medium opacity-90 decoration-slate-300">Independent calculation by Choonik Lee, PhD DABR • {timestamp}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 no-print">
-                        <button onClick={handlePrint} className="px-5 py-2 text-sm font-bold text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 shadow-sm transition-all active:scale-95 flex items-center gap-2"><Icon name="printer" size={14} /> Generate PDF Report</button>
-                        <button onClick={handleNewSession} className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-all active:scale-95 flex items-center gap-2"><Icon name="refresh-cw" size={14} /> New Session</button>
-                    </div>
-                    </header>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
-                    {cases.length > 0 && (
-                        <div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar pr-4">
-                        {cases.map((c, idx) => (
-                            <div key={c.id} className="relative group flex-shrink-0">
-                            <button onClick={() => setActiveCaseIndex(idx)} className={"pl-4 pr-12 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 border-2 " + (activeCaseIndex === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border-slate-200 hover:border-blue-200 hover:bg-slate-50') + (activeCaseIndex !== idx ? ' no-print' : '')}>
-                                <Icon name="target" size={12} /> {c.target || `Infusion #${idx + 1}`}
-                            </button>
-                            <button onClick={(e) => removeCase(c.id, e)} className={"absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all no-print " + (activeCaseIndex === idx ? 'text-white hover:bg-white/20' : 'text-slate-400 hover:text-red-600 hover:bg-red-50')} title="Remove"><Icon name="X" size={16} /></button>
-                            </div>
-                        ))}
-                        <button onClick={() => { const newId = crypto.randomUUID(); setCases(prev => [...prev, { id: newId, target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '', weekOffset: 1, selectedVialSize: null }]); setActiveCaseIndex(cases.length); }} className="px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-500 border-2 border-dashed border-slate-300 hover:bg-slate-200 transition-all flex-shrink-0 no-print">+ Add Infusion</button>
-                        </div>
-                    )}
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                    <div className="lg:col-span-3 flex flex-col gap-3">
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex-1 flex flex-col">
-                        <h4 className="font-black text-[12px] uppercase text-slate-400 tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2"><Icon name="file-text" size={14} /> Planning Parameters</h4>
-                        <div className="space-y-2 pt-2 flex-1">
-                            <div className="flex flex-col">
-                            <label className="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Target Description</label>
-                            <input type="text" placeholder="e.g. Segment 6" value={activeCase?.target || ''} onChange={e => updateActiveCase({target: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col">
-                                <label className="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Volume (cc)</label>
-                                <input type="number" step="0.01" value={activeCase?.targetVolume || ''} onChange={e => updateActiveCase({targetVolume: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5 text-blue-600">LSF (%)</label>
-                                <input type="number" step="0.1" value={activeCase?.lungShunt || ''} onChange={e => updateActiveCase({lungShunt: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border border-blue-100 rounded-lg text-sm font-black text-blue-700 outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            </div>
-                            <div>
-                            <label className="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">DESIRED DOSE (Gy)</label>
-                            <input type="number" value={activeCase?.desiredDose || ''} onChange={e => updateActiveCase({desiredDose: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-black text-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                            <div className="space-y-2 pt-2 border-t border-slate-50">
-                            <div className="flex flex-col">
-                                <div className="flex items-center mb-0.5 gap-2"><label className="text-[12px] font-black text-slate-500 uppercase tracking-tighter">Infusion Date</label><span className="text-[12px] font-black text-blue-600 uppercase">{getDayLabel(activeCase?.procedureDate)}</span></div>
-                                <input type="date" value={activeCase?.procedureDate || ''} onChange={e => updateActiveCase({procedureDate: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        
-                        
-                        
-                        
-                        <div className="flex flex-col">
-                                <label className="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Infusion Time</label>
-                                <input type="time" value={activeCase?.procedureTime || ''} onChange={e => updateActiveCase({procedureTime: e.target.value})} className="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        
-                        
-                        
-                        
-                        
-                        
-                        </div>
-                        </div>
-                        </div>
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 no-print">
-                        <h4 className="font-black text-[13px] uppercase text-slate-400 tracking-wide mb-1 border-b border-slate-100 pb-1"><Icon name="calendar" size={10} className="inline mr-2"/>Reference Sunday</h4>
-                        <div className="grid grid-cols-2 gap-3 text-center pt-1">
-                            <button onClick={() => updateActiveCase({weekOffset: 1, selectedVialSize: null})} className={"py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter " + (activeCase?.weekOffset === 1 ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100')}>Week 1</button>
-                            <button onClick={() => updateActiveCase({weekOffset: 2, selectedVialSize: null})} className={"py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter " + (activeCase?.weekOffset === 2 ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100')}>Week 2</button>
-                        </div>
-                        </div>
-                    </div>
-                    <div className="lg:col-span-6 flex flex-col gap-3">
-                        {results && headerData ? (
-                        <>
-                            <div className="bg-slate-900 rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/5">
-                            <div className="relative z-10 flex flex-col space-y-3 items-start text-left">
-                                <div className="w-full">
-                                <div className="flex items-center gap-2 mb-1 opacity-100"><Icon name="package" className="text-blue-400" size={16} /><span className="text-blue-300 text-[14px] font-black uppercase tracking-tight">Calculation Results</span></div>
-                                <div className="flex flex-col space-y-3">
-                                    <div className="flex flex-col"><span className="text-slate-400 uppercase text-[10px] font-black tracking-wide mb-0.5">Vial Size to Order</span><div className="flex items-center gap-4"><span className="text-3xl md:text-4xl font-black tracking-tighter text-white leading-none">{headerData.vialSize.toFixed(1)} GBq</span>{activeCase?.selectedVialSize && activeCase.selectedVialSize !== results.autoRecommendedVial && <span className="text-[10px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black uppercase no-print">Manual Selection</span>}</div></div>
-                                    <div className="flex flex-col border-t border-white/5 pt-3"><span className="text-slate-400 uppercase text-[10px] font-black tracking-wide mb-0.5">Calibration Reference</span><span className="text-base font-black text-white leading-none">{results.refDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} [{results.refDate.toLocaleDateString('en-US', { weekday: 'short' })}] | 12:00 PM ET</span></div>
-                                    <div className="flex items-center gap-8 border-t border-white/5 pt-3">
-                                    <div className="flex flex-col"><span className="text-slate-500 uppercase text-[9px] font-black tracking-wide mb-1 text-blue-300">Target Dose</span><span className="text-xl md:text-2xl font-black text-blue-400 leading-none">{headerData.doseAtProc.toFixed(1)} Gy</span></div>
-                                    <div className="flex flex-col"><span className="text-slate-500 uppercase text-[9px] font-black tracking-wide mb-1 text-blue-300">Lung Dose {cases.length > 1 ? '(Single / Cumulative)' : ''}</span><div className="flex items-baseline gap-2"><span className="text-xl md:text-2xl font-black text-blue-400 leading-none">{headerData.lungDose.toFixed(2)} Gy</span>{cases.length > 1 && (<span className={"text-xl md:text-2xl font-black " + (totalLungDose > 30 ? 'text-red-400' : 'text-slate-500')}>/ {totalLungDose.toFixed(2)} Gy</span>)}</div></div>
-                                    </div>
-                                </div>
-                                </div>
-                            </div>
-                            </div>
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-                            <div className="p-2 border-b bg-slate-50 flex items-center justify-between"><h3 className="font-black text-slate-700 text-[12px] uppercase tracking-tighter">Comparative Sensitivity Analysis (Full List)</h3></div>
-                            <div className="overflow-y-auto h-[170px] custom-scrollbar" ref={tableRef}>
-                                <table className="w-full text-left border-collapse">
-                                <thead className="sticky top-0 bg-slate-50 z-10 border-b">
-                                    <tr className="text-slate-400 font-black text-[12px]">
-                                    <th className="px-6 py-1">Vial Size (GBq)</th>
-                                    <th className="px-6 py-1">Target (Gy)</th>
-                                    <th className="px-6 py-1">Lung (Gy)</th>
-                                    <th className="px-6 py-1">Variance</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-[11px] font-medium">
-                                    {results.options.map((opt, i) => {
-                                    const active = (activeCase?.selectedVialSize || results.autoRecommendedVial) === opt.vialSize;
-                                    const isRec = opt.vialSize === results.autoRecommendedVial;
-                                    const isHighVariance = Math.abs(opt.diff) > 5;
-                                    const vStyle = active ? (isHighVariance ? 'bg-red-500 text-white shadow-sm' : 'bg-emerald-500 text-white shadow-sm') : (isHighVariance ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700');
-                                    return (
-                                        <tr key={i} ref={isRec ? recommendedRowRef : null} onClick={() => updateActiveCase({selectedVialSize: opt.vialSize})} className={"border-b border-slate-50 cursor-pointer transition-all " + (active ? 'bg-blue-600 text-white shadow-inner' : 'hover:bg-slate-50')}>
-                                        <td className="px-6 py-1 font-bold text-base font-black flex items-center gap-2">{opt.vialSize.toFixed(1)} {isRec && <span className={"text-[10px] px-1 rounded font-black uppercase " + (active ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-700')}>REC</span>}{active && <Icon name="check" size={14} className="ml-auto no-print" />}</td>
-                                        <td className={"px-6 py-1 text-sm font-bold " + (active ? 'text-white' : 'text-slate-700')}>{opt.doseAtProc.toFixed(1)}</td>
-                                        <td className={"px-6 py-1 text-sm font-bold " + (active ? 'text-blue-100' : 'opacity-80')}>{opt.lungDose.toFixed(2)}</td>
-                                        <td className="px-6 py-1"><span className={"font-mono px-2 py-0.5 rounded-full text-[13px] font-black " + vStyle}>{opt.diff > 0 ? '+' : ''}{opt.diff.toFixed(1)}%</span></td>
-                                        </tr>
-                                    );
-                                    })}
-                                </tbody>
-                                </table>
-                            </div>
-                            </div>
-                        </>
-                        ) : (
-                        <div className="h-full min-h-[450px] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 no-print">
-                            <div className="flex flex-col items-center px-12 text-center">
-                                <Icon name="activity" size={48} className="mb-4 text-slate-300" />
-                                <p className="text-lg font-black text-slate-700 mb-2">Awaiting Parameters</p>
-                                <p className="text-sm italic mb-6">Enter clinical data in the left panel to generate results.</p>
-                            </div>
-                        </div>
-                        )}
-                    </div>
-                    <div className="lg:col-span-3 flex flex-col h-full">
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex-1 flex flex-col">
-                        <h4 className="font-black text-[12px] uppercase text-slate-400 tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2 mb-1"><Icon name="calendar" size={14} /> Infusion Calendar</h4>
-                        {!activeCase?.procedureDate ? (<div className="flex-1 flex items-center justify-center text-slate-300 text-xs font-bold uppercase tracking-widest text-center">Set Infusion Date to view calendar</div>) : (
-                            <div className="space-y-3 pt-2">
-                            <div className="flex justify-center"><span className="text-slate-400 text-xs font-black tracking-[0.2em] uppercase">{calendarMonthHeader}</span></div>
-                            <div className="relative">
-                                <div className="grid grid-cols-7 gap-1 text-center mb-1">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (<span key={idx} className="text-[10px] font-black text-slate-400">{day}</span>))}</div>
-                                <div className="grid grid-cols-7 gap-1">
-                                {calendarDays.map((date, idx) => {
-                                    const [y, m, d] = activeCase.procedureDate.split('-').map(Number);
-                                    const procDateObj = new Date(y, m - 1, d, 12, 0, 0);
-                                    const isProcDate = isSameDay(date, procDateObj);
-                                    const isRefSunday = results?.refDate && isSameDay(date, results.refDate);
-                                    const isCurrentMonth = date.getMonth() === procDateObj.getMonth();
-                                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                                    return (
-                                    <div key={idx} className={`relative h-8 flex items-center justify-center text-[11px] font-bold rounded-lg transition-all ${isProcDate ? 'bg-blue-600 text-white shadow-md z-10' : isRefSunday ? 'border-2 border-amber-400 bg-amber-50 shadow-sm' : isWeekend ? 'bg-emerald-50/80 text-emerald-700' : 'bg-slate-50 text-slate-700'} ${!isCurrentMonth ? 'opacity-30' : 'opacity-100'}`}>
-                                        {date.getDate()}{isRefSunday && !isProcDate && (<div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></div>)}
-                                    </div>
-                                    );
-                                })}
-                                </div>
-                            </div>
-                            <div className="pt-3 border-t border-slate-100 space-y-1.5">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500"><div className="w-3.5 h-3.5 bg-blue-600 rounded shadow-sm"></div><span>Infusion Date</span></div>
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500"><div className="w-3.5 h-3.5 border-2 border-amber-400 rounded bg-amber-50"></div><span>Calibration Sunday</span></div>
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500"><div className="w-3.5 h-3.5 bg-emerald-50 rounded border border-emerald-100"></div><span>Weekend</span></div>
-                            </div>
-                            </div>
-                        )}
-                        </div>
-                    </div>
-                    </div>
-                    <footer className="mt-4 pt-4 border-t border-slate-200 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">University of Michigan • Department of Radiation Oncology</footer>
-                </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
