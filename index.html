@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Y90 TheraSphere Physics 2nd Check</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @media print {
             @page { margin: 1cm; size: auto; }
@@ -59,11 +60,11 @@
             
             <!-- Left Column: Form -->
             <div class="lg:col-span-3 flex flex-col gap-3">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex-1 flex flex-col">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-col">
                     <h4 class="font-black text-[12px] uppercase text-slate-400 tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2">
                         <span id="icon-file-text"></span> Planning Parameters
                     </h4>
-                    <div class="space-y-2 pt-2 flex-1">
+                    <div class="space-y-2 pt-2">
                         <div class="flex flex-col">
                             <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Target Description</label>
                             <input type="text" id="form-target" placeholder="e.g. Segment 6" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
@@ -97,6 +98,7 @@
                         </div>
                     </div>
                 </div>
+                
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 no-print">
                     <h4 class="font-black text-[13px] uppercase text-slate-400 tracking-wide mb-1 border-b border-slate-100 pb-1">
                         <span id="icon-calendar-ref"></span>Calibration Week
@@ -106,14 +108,27 @@
                         <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">Week-2</button>
                     </div>
                 </div>
+
+                <!-- New Delay Simulator Toggle -->
+                <div class="no-print">
+                    <button id="btn-decay-toggle" onclick="toggleDecayTable()" class="w-full py-2.5 text-[12px] font-black rounded-xl border-2 transition-all uppercase tracking-tighter flex items-center justify-center gap-2">
+                        <span id="icon-clock"></span> Delay Simulator
+                    </button>
+                </div>
             </div>
 
             <!-- Middle Column: Results & Table -->
-            <div id="results-container" class="lg:col-span-6 flex flex-col gap-3"></div>
+            <div id="results-container" class="lg:col-span-6 flex flex-col gap-4 h-full"></div>
 
             <!-- Right Column: Calendar -->
             <div id="calendar-container" class="lg:col-span-3 flex flex-col h-full"></div>
 
+        </div>
+
+        <!-- Delay Simulator Section -->
+        <div id="decay-section" class="mt-4 grid grid-cols-1 lg:grid-cols-7 gap-4 hidden no-print">
+            <div id="decay-table-container" class="lg:col-span-4"></div>
+            <div id="decay-plot-container" class="lg:col-span-3"></div>
         </div>
 
         <footer class="mt-4 pt-4 border-t border-white/20 text-center text-blue-200 text-[10px] font-black uppercase tracking-[0.3em]">
@@ -134,7 +149,8 @@
                 'calendar': `<g><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" height="6" /><line x1="3" y1="10" x2="21" y2="10" /></g>`,
                 'package': `<g><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g>`,
                 'check': `<polyline points="20 6 9 17 4 12" />`,
-                'printer': `<g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>`
+                'printer': `<g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>`,
+                'clock': `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />`
             };
             return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="${className}">${paths[name.toLowerCase()]}</svg>`;
         };
@@ -145,6 +161,7 @@
         document.getElementById('icon-refresh').innerHTML = getIcon('refresh-cw', 14);
         document.getElementById('icon-file-text').innerHTML = getIcon('file-text', 14);
         document.getElementById('icon-calendar-ref').innerHTML = getIcon('calendar', 10, 'inline mr-2');
+        document.getElementById('icon-clock').innerHTML = getIcon('clock', 16);
 
         // --- State Management ---
         const THERASPHERE_FACTOR = 50; 
@@ -160,11 +177,13 @@
             cases: [createNewCase()],
             activeCaseIndex: 0,
             results: null,
-            totalLungDose: 0
+            totalLungDose: 0,
+            showDecayTable: false,
+            decayChartInstance: null
         };
 
         function createNewCase(defaultLsf = '') {
-            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: defaultLsf, desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null };
+            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: defaultLsf, desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null, manualWeekOverride: false };
         }
 
         // --- Core Calculation Logic ---
@@ -251,7 +270,6 @@
 
         // --- DOM Update Functions ---
         function updateAllUI(preventScroll = false) {
-            // Timestamp is now only used in the printed report
             const activeCase = state.cases[state.activeCaseIndex] || state.cases[0];
 
             // 1. Auto-adjust best week offset if form valid
@@ -272,6 +290,7 @@
             syncFormWithState();
             renderResults(preventScroll);
             renderCalendar();
+            renderDecayTable();
         }
 
         function renderTabs() {
@@ -332,6 +351,14 @@
 
             btn1.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 1 ? activeClass : inactiveClass}`;
             btn2.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 2 ? activeClass : inactiveClass}`;
+
+            // Update Decay Toggle Button
+            const btnDecay = document.getElementById('btn-decay-toggle');
+            if (state.showDecayTable) {
+                btnDecay.className = "w-full py-2.5 text-[12px] font-black rounded-xl border-2 transition-all uppercase tracking-tighter flex items-center justify-center gap-2 bg-amber-500 border-amber-500 text-white shadow-md";
+            } else {
+                btnDecay.className = "w-full py-2.5 text-[12px] font-black rounded-xl border-2 transition-all uppercase tracking-tighter flex items-center justify-center gap-2 bg-white text-slate-400 border-slate-200 hover:border-amber-300 hover:text-amber-500 shadow-sm";
+            }
         }
 
         function renderResults(preventScroll = false) {
@@ -379,40 +406,40 @@
             }).join('');
 
             container.innerHTML = `
-                <div class="bg-slate-900 rounded-xl p-5 text-white shadow-xl relative overflow-hidden border border-white/5">
-                    <div class="relative z-10 flex flex-col space-y-3 items-start text-left">
+                <div class="bg-slate-900 rounded-xl p-5 md:p-6 text-white shadow-xl relative overflow-hidden border border-white/5 flex-1 flex flex-col justify-center">
+                    <div class="relative z-10 flex flex-col space-y-3 items-start text-left w-full">
                         <div class="w-full">
-                            <div class="flex items-center gap-2 mb-1 opacity-100">
+                            <div class="flex items-center gap-2 mb-2 opacity-100">
                                 ${getIcon('package', 16, 'text-blue-400')}
                                 <span class="text-blue-300 text-[14px] font-black uppercase tracking-tight">Calculation Results</span>
                             </div>
-                            <div class="flex flex-col space-y-3">
+                            <div class="flex flex-col space-y-4">
                                 <div class="flex flex-col">
-                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-0.5">Vial Size to Order</span>
+                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-1">Vial Size to Order</span>
                                     <div class="flex items-center gap-4">
-                                        <span class="text-3xl md:text-4xl font-black tracking-tighter text-white leading-none">${headerData.vialSize.toFixed(1)} GBq</span>
+                                        <span class="text-4xl md:text-5xl font-black tracking-tighter text-white leading-none">${headerData.vialSize.toFixed(1)} GBq</span>
                                         ${isManual ? `<span class="text-[10px] bg-amber-500/20 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-black uppercase no-print">Manual Selection</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="flex flex-col border-t border-white/5 pt-3">
-                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-0.5">Calibration Reference</span>
-                                    <span class="text-base font-black text-white leading-none">
+                                    <span class="text-slate-400 uppercase text-[12px] font-black tracking-wide mb-1">Calibration Reference</span>
+                                    <span class="text-lg font-black text-white leading-none">
                                         ${state.results.refDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} [${state.results.refDate.toLocaleDateString('en-US', { weekday: 'short' })}] | 12:00 PM ET
                                     </span>
                                 </div>
                                 <div class="flex items-start flex-wrap gap-6 sm:gap-8 border-t border-white/5 pt-3">
                                     <div class="flex flex-col">
-                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5 ">Target Dose</span>
-                                        <span class="text-base font-black text-blue-400 leading-none">${headerData.doseAtProc.toFixed(1)} Gy</span>
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-1">Target Dose</span>
+                                        <span class="text-xl font-black text-blue-400 leading-none">${headerData.doseAtProc.toFixed(1)} Gy</span>
                                     </div>
                                     <div class="flex flex-col">
-                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5">Activity @ Infusion</span>
-                                        <span class="text-base font-black text-blue-400 leading-none">${headerData.activityAtProc.toFixed(3)} GBq</span>
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-1">Activity @ Infusion</span>
+                                        <span class="text-xl font-black text-blue-400 leading-none">${headerData.activityAtProc.toFixed(3)} GBq</span>
                                     </div>
                                     <div class="flex flex-col">
-                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5">Lung Dose ${state.cases.length > 1 ? '(Single / Cumulative)' : ''}</span>
+                                        <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-1">Lung Dose ${state.cases.length > 1 ? '(Single / Cumulative)' : ''}</span>
                                         <div class="flex items-baseline gap-1">
-                                            <span class="text-base font-black text-blue-400 leading-none">${headerData.lungDose.toFixed(2)} Gy</span>
+                                            <span class="text-xl font-black text-blue-400 leading-none">${headerData.lungDose.toFixed(2)} Gy</span>
                                             ${state.cases.length > 1 ? `
                                             <span class="text-base font-black ${state.totalLungDose > 30 ? 'text-red-400' : 'text-slate-500'}">
                                                 / ${state.totalLungDose.toFixed(2)} Gy
@@ -424,11 +451,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                     <div class="p-2 border-b bg-slate-50 flex items-center justify-between">
                         <h3 class="font-black text-slate-700 text-[12px] uppercase">Results with adjacent vial sizes</h3>
                     </div>
-                    <div class="overflow-y-auto h-[170px] custom-scrollbar" id="table-scroll-area">
+                    <div class="overflow-y-auto max-h-[150px] custom-scrollbar" id="table-scroll-area">
                         <table class="w-full text-left border-collapse">
                             <thead class="sticky top-0 bg-slate-50 z-10 border-b">
                                 <tr class="text-slate-400 font-black text-[12px]">
@@ -550,9 +577,265 @@
             container.innerHTML = calendarHtml;
         }
 
+        function renderDecayTable() {
+            const section = document.getElementById('decay-section');
+            const tableContainer = document.getElementById('decay-table-container');
+            const plotContainer = document.getElementById('decay-plot-container');
+
+            if (!state.showDecayTable) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+
+            const activeCase = state.cases[state.activeCaseIndex];
+            
+            // Validate required data is present
+            if (!state.results || !activeCase.procedureDate || !activeCase.desiredDose || !activeCase.targetVolume) {
+                tableContainer.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+                        ${getIcon('clock', 32, 'mb-3 text-slate-300')}
+                        <p class="text-sm font-black text-slate-600 uppercase tracking-widest">Awaiting Parameters</p>
+                        <p class="text-xs text-slate-400 mt-1">Enter procedure parameters to view the delay simulator.</p>
+                    </div>
+                `;
+                plotContainer.innerHTML = ``;
+                if(state.decayChartInstance) { state.decayChartInstance.destroy(); state.decayChartInstance = null; }
+                return;
+            }
+
+            // Calculation Constants
+            const vial = activeCase.selectedVialSize || state.results.autoRecommendedVial;
+            const massKg = (parseFloat(activeCase.targetVolume) * LIVER_DENSITY) / 1000;
+            const shuntFraction = (parseFloat(activeCase.lungShunt) || 0) / 100;
+            const liverShuntFactor = 1 - shuntFraction;
+            const desiredDose = parseFloat(activeCase.desiredDose);
+            const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
+
+            // Date setup
+            let simDate = new Date(`${activeCase.procedureDate}T${activeCase.procedureTime || '09:00'}:00`);
+            const endSimDate = new Date(simDate);
+            endSimDate.setHours(17, 0, 0, 0); // Stops cleanly at 5:00 PM
+
+            let rowsHtml = '';
+            let hasRows = false;
+            let timeLabels = [];
+            let doseData = [];
+
+            const formatT = (dateObj) => {
+                let h = dateObj.getHours();
+                let m = dateObj.getMinutes();
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
+            };
+
+            // Add Baseline/Planned point for the chart
+            timeLabels.push(formatT(simDate) + " (Plan)");
+            const plannedDaysElapsed = (simDate - state.results.refDate) / (1000 * 60 * 60 * 24);
+            const plannedActivityAtProc = vial * Math.exp(-lambda * plannedDaysElapsed);
+            const plannedResLiverDose = (plannedActivityAtProc * RESIDUAL_EFFICIENCY * THERASPHERE_FACTOR * liverShuntFactor) / massKg;
+            doseData.push(plannedResLiverDose.toFixed(1));
+
+            // Loop 1 hour increments up to 5pm
+            while (true) {
+                simDate = new Date(simDate.getTime() + 60 * 60 * 1000); // add 1 hour
+                if (simDate > endSimDate) break; // Break if we cross the 5pm boundary
+                hasRows = true;
+
+                const daysElapsed = (simDate - state.results.refDate) / (1000 * 60 * 60 * 24);
+                const activityAtProc = vial * Math.exp(-lambda * daysElapsed);
+                const resLiverDose = (activityAtProc * RESIDUAL_EFFICIENCY * THERASPHERE_FACTOR * liverShuntFactor) / massKg;
+                const resLungDose = THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * activityAtProc * shuntFraction;
+                const diff = ((resLiverDose - desiredDose) / desiredDose) * 100;
+
+                const isHighVariance = Math.abs(diff) > 5;
+                const vStyle = isHighVariance ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700';
+
+                timeLabels.push(formatT(simDate));
+                doseData.push(resLiverDose.toFixed(1));
+
+                rowsHtml += `
+                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition-all">
+                        <td class="px-6 py-2 font-bold text-slate-800 text-sm whitespace-nowrap">
+                            ${formatT(simDate)}
+                        </td>
+                        <td class="px-6 py-2 text-sm font-bold text-slate-700 text-center">${resLiverDose.toFixed(1)}</td>
+                        <td class="px-6 py-2 text-sm font-black text-amber-600 text-center">${activityAtProc.toFixed(3)}</td>
+                        <td class="px-6 py-2 text-sm font-bold text-slate-500 text-center">${resLungDose.toFixed(2)}</td>
+                        <td class="px-6 py-2 text-center"><span class="font-mono px-2 py-0.5 rounded-full text-[13px] font-black ${vStyle}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span></td>
+                    </tr>
+                `;
+            }
+
+            if (!hasRows) {
+                rowsHtml = `<tr><td colspan="5" class="px-6 py-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No additional hours available before 5:00 PM.</td></tr>`;
+            }
+
+            // 안전하게 이전 차트 인스턴스를 메모리 및 DOM에서 삭제 (에러 방지)
+            if (state.decayChartInstance) {
+                state.decayChartInstance.destroy();
+                state.decayChartInstance = null;
+            }
+
+            tableContainer.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <div class="p-3 border-b bg-slate-50 flex items-center justify-between">
+                        <h3 class="font-black text-slate-700 text-[12px] uppercase tracking-wide flex items-center gap-2">
+                            <span class="bg-amber-500 text-white p-1 rounded-md">${getIcon('clock', 14)}</span>
+                            Same-Day Delay Simulator (Up to 5:00 PM)
+                        </h3>
+                    </div>
+                    <div class="overflow-y-auto max-h-[300px] custom-scrollbar h-full">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-slate-50 z-10 border-b">
+                                <tr class="text-slate-400 font-black text-[10px]">
+                                    <th class="px-6 py-2 uppercase whitespace-nowrap">INFUSION TIME</th>
+                                    <th class="px-6 py-2 text-center">TARGET (Gy)</th>
+                                    <th class="px-6 py-2 text-center">ACTIVITY (GBq)</th>
+                                    <th class="px-6 py-2 text-center">LUNG (Gy)</th>
+                                    <th class="px-6 py-2 text-center uppercase">VARIANCE</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-[11px] font-medium">
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            if (hasRows) {
+                plotContainer.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[300px]">
+                        <div class="p-3 border-b bg-slate-50 flex items-center justify-between">
+                            <h3 class="font-black text-slate-700 text-[12px] uppercase tracking-wide flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-600 p-1 rounded-md">${getIcon('activity', 14)}</span>
+                                Target Dose Decay Plot
+                            </h3>
+                        </div>
+                        <div class="p-4 flex-1 relative w-full h-full min-h-[250px]">
+                            <canvas id="decayChart"></canvas>
+                        </div>
+                    </div>
+                `;
+
+                const ctx = document.getElementById('decayChart').getContext('2d');
+                
+                // Ensure dose is properly scaled on Y-Axis
+                const doses = doseData.map(Number);
+                const maxDose = Math.max(...doses);
+                const minDose = Math.min(...doses);
+                
+                // Desired dose와 실제 계산된 maxDose 중 더 큰 값을 차트의 max 범위로 설정하여 데이터가 잘리지 않게 함
+                const chartMax = Math.max(desiredDose, maxDose);
+                const chartMin = Math.min(desiredDose, minDose);
+                const yPadding = (chartMax - chartMin) * 0.1;
+
+                state.decayChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timeLabels,
+                        datasets: [{
+                            label: 'Target Dose (Gy)',
+                            data: doseData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#f59e0b',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                padding: 10,
+                                titleFont: { size: 13, weight: 'bold' },
+                                bodyFont: { size: 14, weight: 'bold' },
+                                displayColors: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.parsed.y + ' Gy';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { font: { size: 10, family: 'sans-serif' }, color: '#64748b' },
+                                grid: { display: false }
+                            },
+                            y: {
+                                title: { display: true, text: 'Target Dose (Gy)', font: { size: 11, weight: 'bold' }, color: '#64748b' },
+                                suggestedMax: chartMax, // Dynamic max allowed
+                                suggestedMin: Math.max(0, chartMin - yPadding),
+                                // 원하는 Desired Dose에 강제로 Tick을 그려 넣기 위한 후처리 플러그인
+                                afterBuildTicks: function(axis) {
+                                    const hasDesiredDose = axis.ticks.some(t => Math.abs(t.value - desiredDose) < 0.1);
+                                    if (!hasDesiredDose) {
+                                        axis.ticks.push({ value: desiredDose });
+                                        axis.ticks.sort((a, b) => a.value - b.value);
+                                    }
+                                },
+                                ticks: { 
+                                    color: function(context) {
+                                        // 방어 로직 추가: context.tick이 undefined인 경우 기본 색상 반환
+                                        if (!context || !context.tick || context.tick.value === undefined) {
+                                            return '#64748b';
+                                        }
+                                        return Math.abs(context.tick.value - desiredDose) < 0.1 ? '#dc2626' : '#64748b';
+                                    },
+                                    font: function(context) {
+                                        // 방어 로직 추가: context.tick이 undefined인 경우 기본 폰트 반환
+                                        if (!context || !context.tick || context.tick.value === undefined) {
+                                            return { size: 10, weight: 'normal' };
+                                        }
+                                        return { 
+                                            size: 10, 
+                                            weight: Math.abs(context.tick.value - desiredDose) < 0.1 ? '900' : 'normal' 
+                                        };
+                                    }
+                                },
+                                grid: { color: '#f1f5f9' }
+                            }
+                        }
+                    }
+                });
+            } else {
+                 plotContainer.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
+                        ${getIcon('activity', 32, 'mb-3 text-slate-300')}
+                        <p class="text-sm font-black text-slate-600 uppercase tracking-widest">No Plot Data</p>
+                        <p class="text-xs text-slate-400 mt-1">Infusion scheduled too close to 5:00 PM.</p>
+                    </div>
+                `;
+            }
+        }
+
         // --- Interaction Handlers ---
+        function toggleDecayTable() {
+            state.showDecayTable = !state.showDecayTable;
+            updateAllUI(true); // pass true to prevent scrolling the middle table
+        }
+
         function handleInput(field, value) {
             state.cases[state.activeCaseIndex][field] = value;
+            
+            // 입력 폼에 변경사항이 생기면 기존 수동 오버라이드를 지우고 다시 Auto-Select 되도록 함
+            if (['targetVolume', 'lungShunt', 'desiredDose', 'procedureDate', 'procedureTime'].includes(field)) {
+                state.cases[state.activeCaseIndex].manualWeekOverride = false;
+                state.cases[state.activeCaseIndex].selectedVialSize = null;
+            }
+            
             updateAllUI();
         }
 
@@ -597,6 +880,7 @@
             state.cases = [createNewCase()];
             state.activeCaseIndex = 0;
             state.results = null;
+            state.showDecayTable = false;
             state.timestamp = new Date().toLocaleString();
             updateAllUI();
         }
