@@ -23,19 +23,19 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans p-3 md:p-4 outline-none min-h-screen">
+<body class="bg-[#00274C] text-slate-900 font-sans p-3 md:p-4 outline-none min-h-screen">
 
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
             <div class="flex-1">
-                <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
+                <h1 class="text-3xl font-extrabold text-[#FFCB05] flex items-center gap-3">
                     <span id="icon-activity-header"></span>
-                    TheraSphere Plan 2nd Checker
+                    TheraSphere Physics 2nd Checker
                 </h1>
                 <div class="flex items-center gap-4 mt-0.5">
-                    <p class="text-slate-500 text-sm font-medium opacity-90 decoration-slate-300">
-                        Independent calculation by Choonik Lee, PhD DABR • <span id="timestamp-display"></span>
+                    <p class="text-blue-200 text-sm font-medium opacity-90 decoration-slate-300">
+                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 2/20/2026)
                     </p>
                 </div>
             </div>
@@ -116,7 +116,7 @@
 
         </div>
 
-        <footer class="mt-4 pt-4 border-t border-slate-200 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">
+        <footer class="mt-4 pt-4 border-t border-white/20 text-center text-blue-200 text-[10px] font-black uppercase tracking-[0.3em]">
             University of Michigan • Department of Radiation Oncology
         </footer>
     </div>
@@ -140,7 +140,7 @@
         };
 
         // Static Icons Injection
-        document.getElementById('icon-activity-header').innerHTML = getIcon('activity', 32, 'text-blue-600');
+        document.getElementById('icon-activity-header').innerHTML = getIcon('activity', 32, 'text-[#FFCB05]');
         document.getElementById('icon-printer').innerHTML = getIcon('printer', 14);
         document.getElementById('icon-refresh').innerHTML = getIcon('refresh-cw', 14);
         document.getElementById('icon-file-text').innerHTML = getIcon('file-text', 14);
@@ -251,7 +251,7 @@
 
         // --- DOM Update Functions ---
         function updateAllUI(preventScroll = false) {
-            document.getElementById('timestamp-display').textContent = state.timestamp;
+            // Timestamp is now only used in the printed report
             const activeCase = state.cases[state.activeCaseIndex] || state.cases[0];
 
             // 1. Auto-adjust best week offset if form valid
@@ -280,7 +280,7 @@
 
             state.cases.forEach((c, idx) => {
                 const isActive = state.activeCaseIndex === idx;
-                const btnStyle = isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border-slate-200 hover:border-blue-200 hover:bg-slate-50';
+                const btnStyle = isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white/10 text-blue-100 border-white/20 hover:border-white/40 hover:bg-white/20';
                 const noPrintClass = !isActive ? 'no-print' : '';
 
                 const div = document.createElement('div');
@@ -290,7 +290,7 @@
                         ${getIcon('target', 12)}
                         ${c.target || `Infusion #${idx + 1}`}
                     </button>
-                    <button onclick="removeCase('${c.id}', event)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all no-print ${isActive ? 'text-white hover:bg-white/20' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}" title="Remove">
+                    <button onclick="removeCase('${c.id}', event)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-all no-print ${isActive ? 'text-white hover:bg-white/20' : 'text-blue-200 hover:text-red-400 hover:bg-red-500/20'}" title="Remove">
                         ${getIcon('x', 16)}
                     </button>
                 `;
@@ -300,7 +300,7 @@
             // Add Infusion Button
             const addBtn = document.createElement('button');
             addBtn.onclick = addCase;
-            addBtn.className = "px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-500 border-2 border-dashed border-slate-300 hover:bg-slate-200 transition-all flex-shrink-0 no-print";
+            addBtn.className = "px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-white/5 text-blue-200 border-2 border-dashed border-white/30 hover:bg-white/10 transition-all flex-shrink-0 no-print";
             addBtn.innerText = "+ Add Infusion";
             container.appendChild(addBtn);
         }
