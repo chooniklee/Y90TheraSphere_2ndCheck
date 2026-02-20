@@ -99,11 +99,11 @@
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 no-print">
                     <h4 class="font-black text-[13px] uppercase text-slate-400 tracking-wide mb-1 border-b border-slate-100 pb-1">
-                        <span id="icon-calendar-ref"></span>Reference Sunday
+                        <span id="icon-calendar-ref"></span>Calibration Week
                     </h4>
                     <div class="grid grid-cols-2 gap-3 text-center pt-1">
-                        <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">1 Week Prior</button>
-                        <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">2 Weeks Prior</button>
+                        <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">Week-1</button>
+                        <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">Week-2</button>
                     </div>
                 </div>
             </div>
@@ -397,7 +397,7 @@
                                         ${state.results.refDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} [${state.results.refDate.toLocaleDateString('en-US', { weekday: 'short' })}] | 12:00 PM ET
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-8 border-t border-white/5 pt-3">
+                                <div class="flex items-start flex-wrap gap-6 sm:gap-8 border-t border-white/5 pt-3">
                                     <div class="flex flex-col">
                                         <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5 ">Target Dose</span>
                                         <span class="text-base font-black text-blue-400 leading-none">${headerData.doseAtProc.toFixed(1)} Gy</span>
@@ -408,7 +408,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-slate-400 uppercase text-[11px] font-black tracking-wide mb-0.5">Lung Dose ${state.cases.length > 1 ? '(Single / Cumulative)' : ''}</span>
-                                        <div class="flex items-baseline gap-0">
+                                        <div class="flex items-baseline gap-1">
                                             <span class="text-base font-black text-blue-400 leading-none">${headerData.lungDose.toFixed(2)} Gy</span>
                                             ${state.cases.length > 1 ? `
                                             <span class="text-base font-black ${state.totalLungDose > 30 ? 'text-red-400' : 'text-slate-500'}">
@@ -635,7 +635,7 @@
                     <div class="report-page ${index < state.cases.length - 1 ? 'page-break' : ''}">
                     <header class="flex justify-between items-end border-b-2 border-slate-800 pb-3 mb-6">
                         <div>
-                        <h1 class="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-tight">Choonik Lee Y90 2nd Check</h1>
+                        <h1 class="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-tight">Physics Y90 TheraSphere 2nd Check</h1>
                         <p class="text-slate-500 font-bold text-sm">University of Michigan • Department of Radiation Oncology</p>
                         </div>
                         <div class="text-right">
@@ -656,7 +656,7 @@
                         </table>
                         </div>
                         <div>
-                        <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Infusion Timing</h3>
+                        <h3 class="text-xs font-black uppercase text-blue-600 mb-2 border-b">Planned Infusion Date/Time</h3>
                         <table class="w-full text-xs">
                             <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Date</td><td class="py-1 font-black text-right">${formatDate(currentCase.procedureDate)}</td></tr>
                             <tr class="border-b border-slate-50"><td class="py-1 text-slate-500 font-bold">Infusion Time</td><td class="py-1 font-black text-right">${formatTime(currentCase.procedureTime)}</td></tr>
@@ -666,7 +666,7 @@
 
                     <div class="bg-slate-100 p-6 rounded-xl mb-6 border border-slate-200">
                         <h2 class="text-blue-600 text-[10px] font-black uppercase tracking-widest mb-3">Independent Calculation Summary</h2>
-                        <div class="grid grid-cols-3 gap-6">
+                        <div class="grid grid-cols-4 gap-4">
                         <div class="text-center border-r border-slate-200">
                             <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Recommended Vial Size</p>
                             <p class="text-3xl font-black text-black">${headerData.vialSize.toFixed(1)} <span class="text-base font-normal">GBq</span></p>
@@ -676,9 +676,14 @@
                             <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Activity at Infusion</p>
                             <p class="text-3xl font-black text-blue-600">${headerData.activityAtProc.toFixed(3)} <span class="text-base font-normal">GBq</span></p>
                         </div>
-                        <div class="text-center">
+                        <div class="text-center border-r border-slate-200">
                             <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Planned Target Dose</p>
                             <p class="text-3xl font-black text-emerald-600">${headerData.doseAtProc.toFixed(1)} <span class="text-base font-normal">Gy</span></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[9px] uppercase font-black text-slate-400 mb-1">Est. Lung Dose</p>
+                            <p class="text-3xl font-black text-slate-700">${headerData.lungDose.toFixed(1)} <span class="text-base font-normal">Gy</span></p>
+                            ${state.cases.length > 1 ? `<p class="text-[10px] font-bold ${state.totalLungDose > 30 ? 'text-red-600' : 'text-slate-600'} mt-1 leading-tight">Cumulative:<br/>${state.totalLungDose.toFixed(1)} Gy</p>` : ''}
                         </div>
                         </div>
                     </div>
@@ -694,7 +699,7 @@
                         </p>
                         </div>
 
-                        <h3 class="text-[10px] font-black uppercase text-slate-400 mb-2 border-b pb-1 tracking-tight">Comparative Sensitivity Analysis (Adjacent Sizes)</h3>
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 mb-2 border-b pb-1 tracking-tight">Target/Lung Dose at Adjacent Vial Sizes</h3>
                         <table class="w-full text-left border-collapse border border-slate-100 text-xs">
                         <thead class="bg-slate-50">
                             <tr>
@@ -707,7 +712,7 @@
                         <tbody>
                             ${tableRows.map(opt => `
                             <tr class="${opt.vialSize === headerData.vialSize ? 'bg-blue-50 font-black text-blue-900' : ''}">
-                                <td class="p-2 border">${opt.vialSize.toFixed(1)} ${opt.vialSize === caseResults.autoRecommendedVial ? '(REC)' : ''}</td>
+                                <td class="p-2 border">${opt.vialSize.toFixed(1)} ${opt.vialSize === caseResults.autoRecommendedVial ? '(Ordered)' : ''}</td>
                                 <td class="p-2 border text-center">${opt.doseAtProc.toFixed(1)}</td>
                                 <td class="p-2 border text-center">${opt.lungDose.toFixed(2)}</td>
                                 <td class="p-2 border text-center font-mono ${Math.abs(opt.diff) > 5 ? 'text-red-600' : 'text-emerald-600'}">
@@ -731,17 +736,25 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                <title>Y90 Multi-Infusion Plan</title>
+                <title>Y90 2nd Check Report</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <style>
                     @media print { 
-                    @page { size: portrait; margin: 0.5cm; } 
-                    body { padding: 0; }
-                    .page-break { page-break-after: always; display: block; height: 0; }
-                    .report-page { min-height: 95vh; display: flex; flex-direction: column; padding: 1.5cm; }
+                        @page { size: portrait; margin: 0.5cm; } 
+                        body { padding: 0; }
+                        .page-break { page-break-after: always; display: block; height: 0; }
+                        .report-page { min-height: 95vh; display: flex; flex-direction: column; padding: 1.5cm; }
+
+                        /* --- High Contrast B/W Print Overrides --- */
+                        * { color: #000000 !important; border-color: #000000 !important; }
+                        .bg-slate-100, .bg-slate-50 { background-color: transparent !important; border: 1px solid #000000 !important; }
+                        .bg-blue-50 { background-color: #e5e5e5 !important; } /* Light gray to highlight active row */
+                        th, td { border: 1px solid #000000 !important; }
+                        .border-b-2 { border-bottom-width: 2px !important; border-bottom-color: #000000 !important; }
+                        .text-blue-600, .text-emerald-600, .text-red-600, .text-slate-400, .text-slate-500 { color: #000000 !important; }
                     }
                     @media screen {
-                    .report-page { border-bottom: 4px dashed #ccc; margin-bottom: 2rem; padding: 2rem; }
+                        .report-page { border-bottom: 4px dashed #ccc; margin-bottom: 2rem; padding: 2rem; }
                     }
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; }
                     .report-container { max-width: 850px; margin: 0 auto; }
