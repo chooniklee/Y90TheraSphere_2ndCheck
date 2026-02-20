@@ -150,7 +150,7 @@
                 'package': `<g><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g>`,
                 'check': `<polyline points="20 6 9 17 4 12" />`,
                 'printer': `<g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>`,
-                'clock': `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />`
+                'clock': `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 16 14" />`
             };
             return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="${className}">${paths[name.toLowerCase()]}</svg>`;
         };
@@ -1002,7 +1002,7 @@
                         <tbody>
                             ${tableRows.map(opt => `
                             <tr class="${opt.vialSize === headerData.vialSize ? 'bg-blue-50 font-black text-blue-900' : ''}">
-                                <td class="p-2 border">${opt.vialSize.toFixed(1)} ${opt.vialSize === caseResults.autoRecommendedVial ? '(Ordered)' : ''}</td>
+                                <td class="p-2 border">${opt.vialSize.toFixed(1)}</td>
                                 <td class="p-2 border text-center">${opt.doseAtProc.toFixed(1)}</td>
                                 <td class="p-2 border text-center">${opt.lungDose.toFixed(2)}</td>
                                 <td class="p-2 border text-center font-mono ${Math.abs(opt.diff) > 5 ? 'text-red-600' : 'text-emerald-600'}">
