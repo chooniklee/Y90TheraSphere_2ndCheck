@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Y90 2nd Check Planner</title>
+    <title>Y90 TheraSphere Physics 2nd Check</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -70,7 +70,7 @@
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="flex flex-col">
-                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Vol (cc)</label>
+                                <label class="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">VOL (cc)</label>
                                 <input type="number" id="form-vol" step="0.01" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
                             <div class="flex flex-col">
@@ -79,7 +79,7 @@
                             </div>
                         </div>
                         <div>
-                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Desired Dose (Gy)</label>
+                            <label class="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">DESIRED DOSE (Gy)</label>
                             <input type="number" id="form-dose" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-black text-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
                         </div>
                         <div class="space-y-2 pt-2 border-t border-slate-50">
@@ -163,8 +163,8 @@
             totalLungDose: 0
         };
 
-        function createNewCase() {
-            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: '', desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null };
+        function createNewCase(defaultLsf = '') {
+            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: defaultLsf, desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null };
         }
 
         // --- Core Calculation Logic ---
@@ -250,7 +250,7 @@
         }
 
         // --- DOM Update Functions ---
-        function updateAllUI() {
+        function updateAllUI(preventScroll = false) {
             document.getElementById('timestamp-display').textContent = state.timestamp;
             const activeCase = state.cases[state.activeCaseIndex] || state.cases[0];
 
@@ -270,7 +270,7 @@
             // 3. Render parts
             renderTabs();
             syncFormWithState();
-            renderResults();
+            renderResults(preventScroll);
             renderCalendar();
         }
 
@@ -334,8 +334,11 @@
             btn2.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 2 ? activeClass : inactiveClass}`;
         }
 
-        function renderResults() {
+        function renderResults(preventScroll = false) {
             const container = document.getElementById('results-container');
+            const scrollArea = document.getElementById('table-scroll-area');
+            const savedScrollTop = scrollArea ? scrollArea.scrollTop : null;
+
             const activeCase = state.cases[state.activeCaseIndex];
 
             if (!state.results) {
@@ -443,11 +446,16 @@
                 </div>
             `;
 
-            // Scroll recommended row into view
-            setTimeout(() => {
-                const recRow = document.getElementById('recommended-row');
-                if (recRow) recRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 10);
+            // Restore scroll position or smooth scroll to recommended row
+            if (preventScroll && savedScrollTop !== null) {
+                const newScrollArea = document.getElementById('table-scroll-area');
+                if (newScrollArea) newScrollArea.scrollTop = savedScrollTop;
+            } else if (!preventScroll) {
+                setTimeout(() => {
+                    const recRow = document.getElementById('recommended-row');
+                    if (recRow) recRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 10);
+            }
         }
 
         function renderCalendar() {
@@ -490,7 +498,6 @@
                         const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
                         const isProcDate = isSameDay(date, procDateObj);
                         const isRefSunday = state.results && state.results.refDate && isSameDay(date, state.results.refDate);
-                        const isCurrentMonth = date.getMonth() === procDateObj.getMonth();
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
                         let classes = `relative h-8 flex items-center justify-center text-[11px] font-bold rounded-lg transition-all `;
@@ -498,8 +505,6 @@
                         else if (isRefSunday) classes += 'border-2 border-amber-400 bg-amber-50 shadow-sm ';
                         else if (isWeekend) classes += 'bg-emerald-50/80 text-emerald-700 ';
                         else classes += 'bg-slate-50 text-slate-700 ';
-                        
-                        classes += (!isCurrentMonth ? 'opacity-30' : 'opacity-100');
 
                         return `
                             <div class="${classes}">
@@ -557,7 +562,8 @@
         }
 
         function addCase() {
-            state.cases.push(createNewCase());
+            const initialLsf = state.cases.length > 0 ? state.cases[0].lungShunt : '';
+            state.cases.push(createNewCase(initialLsf));
             state.activeCaseIndex = state.cases.length - 1;
             updateAllUI();
         }
@@ -584,7 +590,7 @@
 
         function setVialSize(size) {
             state.cases[state.activeCaseIndex].selectedVialSize = size;
-            updateAllUI();
+            updateAllUI(true); // Pass true to prevent scrolling back to the recommended row during manual selection
         }
 
         function handleNewSession() {
