@@ -36,7 +36,7 @@
                 </h1>
                 <div class="flex items-center gap-4 mt-0.5">
                     <p class="text-blue-200 text-sm font-medium opacity-90 decoration-slate-300">
-                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 2/20/2026)
+                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 2/27/2026)
                     </p>
                 </div>
             </div>
@@ -81,7 +81,7 @@
                         </div>
                         <div>
                             <label class="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">DESIRED DOSE (Gy)</label>
-                            <input type="number" id="form-dose" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-black text-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
+                            <input type="number" id="form-dose" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                         </div>
                         <div class="space-y-2 pt-2 border-t border-slate-50">
                             <div class="flex flex-col">
@@ -93,7 +93,7 @@
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Infusion Time</label>
-                                <input type="time" id="form-time" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                                <input type="time" id="form-time" min="07:00" max="17:00" class="w-full px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
                         </div>
                     </div>
@@ -183,7 +183,7 @@
         };
 
         function createNewCase(defaultLsf = '') {
-            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: defaultLsf, desiredDose: '', procedureDate: '', procedureTime: '09:00', weekOffset: 1, selectedVialSize: null, manualWeekOverride: false };
+            return { id: crypto.randomUUID(), target: '', targetVolume: '', lungShunt: defaultLsf, desiredDose: '', procedureDate: '', procedureTime: '', weekOffset: 1, selectedVialSize: null, manualWeekOverride: false };
         }
 
         // --- Core Calculation Logic ---
@@ -202,13 +202,16 @@
 
         function calculateResults(data) {
             const { targetVolume, lungShunt, desiredDose, procedureDate, procedureTime, weekOffset } = data;
-            if (!targetVolume || !desiredDose || !procedureDate) return null;
+            if (!targetVolume || !desiredDose || !procedureDate || !procedureTime) return null;
+
+            const [th, tm] = procedureTime.split(':').map(Number);
+            if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return null;
 
             const massKg = (parseFloat(targetVolume) * LIVER_DENSITY) / 1000;
             const shuntFraction = (parseFloat(lungShunt) || 0) / 100;
             const liverShuntFactor = 1 - shuntFraction;
             const activityAtTreatment = (parseFloat(desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * liverShuntFactor);
-            const procDateTime = new Date(`${procedureDate}T${procedureTime || '09:00'}:00`);
+            const procDateTime = new Date(`${procedureDate}T${procedureTime}:00`);
             const refSunday = getReferenceSunday(procedureDate, weekOffset);
             const daysElapsed = (procDateTime - refSunday) / (1000 * 60 * 60 * 24);
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
@@ -231,12 +234,16 @@
             const vol = parseFloat(caseData.targetVolume);
             const dose = parseFloat(caseData.desiredDose);
             const date = caseData.procedureDate;
-            if (!vol || !dose || !date) return 1;
+            const time = caseData.procedureTime;
+            if (!vol || !dose || !date || !time) return 1;
+
+            const [th, tm] = time.split(':').map(Number);
+            if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return 1;
 
             const massKg = (vol * LIVER_DENSITY) / 1000;
             const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
             const actP = (dose * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFrac));
-            const procDT = new Date(`${date}T${caseData.procedureTime || '09:00'}:00`);
+            const procDT = new Date(`${date}T${time}:00`);
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
 
             const evaluateWeek = (offset) => {
@@ -254,11 +261,15 @@
 
         function calculateTotalLungDose() {
             state.totalLungDose = state.cases.reduce((acc, c) => {
-                if (!c.targetVolume || !c.desiredDose || !c.procedureDate) return acc;
+                if (!c.targetVolume || !c.desiredDose || !c.procedureDate || !c.procedureTime) return acc;
+                
+                const [th, tm] = c.procedureTime.split(':').map(Number);
+                if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return acc;
+
                 const massKg = (parseFloat(c.targetVolume) * LIVER_DENSITY) / 1000;
                 const shuntFraction = (parseFloat(c.lungShunt) || 0) / 100;
                 const activityAtTreatment = (parseFloat(c.desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFraction));
-                const procDateTime = new Date(`${c.procedureDate}T${c.procedureTime || '09:00'}:00`);
+                const procDateTime = new Date(`${c.procedureDate}T${c.procedureTime}:00`);
                 const daysElapsed = (procDateTime - getReferenceSunday(c.procedureDate, c.weekOffset)) / (1000 * 60 * 60 * 24);
                 const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
                 const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
@@ -346,6 +357,19 @@
             const btn1 = document.getElementById('btn-week-1');
             const btn2 = document.getElementById('btn-week-2');
             
+            let w1Text = "Week-1";
+            let w2Text = "Week-2";
+            
+            if (activeCase.procedureDate) {
+                const w1Date = getReferenceSunday(activeCase.procedureDate, 1);
+                const w2Date = getReferenceSunday(activeCase.procedureDate, 2);
+                w1Text = `Week-1 (${w1Date.getMonth() + 1}/${w1Date.getDate()})`;
+                w2Text = `Week-2 (${w2Date.getMonth() + 1}/${w2Date.getDate()})`;
+            }
+            
+            btn1.innerText = w1Text;
+            btn2.innerText = w2Text;
+            
             const activeClass = 'bg-blue-600 border-blue-600 text-white shadow-md';
             const inactiveClass = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
 
@@ -368,15 +392,34 @@
 
             const activeCase = state.cases[state.activeCaseIndex];
 
+            let isInvalidTime = false;
+            if (activeCase.procedureTime) {
+                const [th, tm] = activeCase.procedureTime.split(':').map(Number);
+                if (!isNaN(th) && (th < 7 || th > 17 || (th === 17 && tm > 0))) {
+                    isInvalidTime = true;
+                }
+            }
+
             if (!state.results) {
-                container.innerHTML = `
-                    <div class="h-full min-h-[450px] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 no-print">
-                        <div class="flex flex-col items-center px-12 text-center">
-                            ${getIcon('activity', 48, 'mb-4 text-slate-300')}
-                            <p class="text-lg font-black text-slate-700 mb-2">Awaiting Parameters</p>
-                            <p class="text-sm italic mb-6">Enter clinical data in the left panel to generate results.</p>
-                        </div>
-                    </div>`;
+                if (isInvalidTime) {
+                    container.innerHTML = `
+                        <div class="h-full min-h-[450px] bg-red-50 border-2 border-dashed border-red-300 rounded-xl flex flex-col items-center justify-center text-red-500 no-print">
+                            <div class="flex flex-col items-center px-12 text-center">
+                                ${getIcon('clock', 48, 'mb-4 text-red-400')}
+                                <p class="text-lg font-black text-red-600 mb-2">Invalid Infusion Time</p>
+                                <p class="text-sm font-bold text-red-500 mb-6">Time must be between 07:00 AM and 05:00 PM.</p>
+                            </div>
+                        </div>`;
+                } else {
+                    container.innerHTML = `
+                        <div class="h-full min-h-[450px] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 no-print">
+                            <div class="flex flex-col items-center px-12 text-center">
+                                ${getIcon('activity', 48, 'mb-4 text-slate-300')}
+                                <p class="text-lg font-black text-slate-700 mb-2">Awaiting Parameters</p>
+                                <p class="text-sm italic mb-6">Enter clinical data in the left panel to generate results.</p>
+                            </div>
+                        </div>`;
+                }
                 return;
             }
 
@@ -591,15 +634,33 @@
 
             const activeCase = state.cases[state.activeCaseIndex];
             
+            let isInvalidTime = false;
+            if (activeCase.procedureTime) {
+                const [th, tm] = activeCase.procedureTime.split(':').map(Number);
+                if (!isNaN(th) && (th < 7 || th > 17 || (th === 17 && tm > 0))) {
+                    isInvalidTime = true;
+                }
+            }
+
             // Validate required data is present
-            if (!state.results || !activeCase.procedureDate || !activeCase.desiredDose || !activeCase.targetVolume) {
-                tableContainer.innerHTML = `
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
-                        ${getIcon('clock', 32, 'mb-3 text-slate-300')}
-                        <p class="text-sm font-black text-slate-600 uppercase tracking-widest">Awaiting Parameters</p>
-                        <p class="text-xs text-slate-400 mt-1">Enter procedure parameters to view the delay simulator.</p>
-                    </div>
-                `;
+            if (!state.results || !activeCase.procedureDate || !activeCase.desiredDose || !activeCase.targetVolume || !activeCase.procedureTime) {
+                if (isInvalidTime) {
+                    tableContainer.innerHTML = `
+                        <div class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+                            ${getIcon('clock', 32, 'mb-3 text-red-400')}
+                            <p class="text-sm font-black text-red-600 uppercase tracking-widest">Invalid Time</p>
+                            <p class="text-xs font-bold text-red-500 mt-1">Please enter a time between 07:00 AM and 05:00 PM.</p>
+                        </div>
+                    `;
+                } else {
+                    tableContainer.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+                            ${getIcon('clock', 32, 'mb-3 text-slate-300')}
+                            <p class="text-sm font-black text-slate-600 uppercase tracking-widest">Awaiting Parameters</p>
+                            <p class="text-xs text-slate-400 mt-1">Enter procedure parameters to view the delay simulator.</p>
+                        </div>
+                    `;
+                }
                 plotContainer.innerHTML = ``;
                 if(state.decayChartInstance) { state.decayChartInstance.destroy(); state.decayChartInstance = null; }
                 return;
@@ -614,7 +675,7 @@
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
 
             // Date setup
-            let simDate = new Date(`${activeCase.procedureDate}T${activeCase.procedureTime || '09:00'}:00`);
+            let simDate = new Date(`${activeCase.procedureDate}T${activeCase.procedureTime}:00`);
             const endSimDate = new Date(simDate);
             endSimDate.setHours(17, 0, 0, 0); // Stops cleanly at 5:00 PM
 
@@ -662,7 +723,7 @@
                             ${formatT(simDate)}
                         </td>
                         <td class="px-6 py-2 text-sm font-bold text-slate-700 text-center">${resLiverDose.toFixed(1)}</td>
-                        <td class="px-6 py-2 text-sm font-black text-amber-600 text-center">${activityAtProc.toFixed(3)}</td>
+                        <td class="px-6 py-2 text-sm font-bold text-slate-700 text-center">${activityAtProc.toFixed(3)}</td>
                         <td class="px-6 py-2 text-sm font-bold text-slate-500 text-center">${resLungDose.toFixed(2)}</td>
                         <td class="px-6 py-2 text-center"><span class="font-mono px-2 py-0.5 rounded-full text-[13px] font-black ${vStyle}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span></td>
                     </tr>
