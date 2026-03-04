@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <!-- 
+  CHANGE LOG - March 4, 2026
+  1. Reordered input fields: Moved "Desired Dose (Gy)" to the bottom of the section (below Infusion Date and Time).
+  2. UX Improvement: "Infusion Time" field starts empty by default but automatically initializes to '08:00' upon user focus/click.
+  3. Updated attribution text date to 3/4/2026.
+
   CHANGE LOG - February 28, 2026
   1. Updated attribution date to 2/28/2026.
   2. Set default procedureTime to '08:00' (8:00 AM) in initial state.
@@ -47,7 +52,7 @@
                 </h1>
                 <div class="flex items-center gap-4 mt-0.5">
                     <p class="text-blue-200 text-sm font-medium opacity-90 decoration-slate-300">
-                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 2/28/2026)
+                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 3/4/2026)
                     </p>
                 </div>
             </div>
@@ -93,11 +98,6 @@
                                 <input type="number" id="form-lsf" step="0.1" inputmode="decimal" class="w-full min-w-0 px-3 py-1 bg-slate-50 border border-blue-100 rounded-lg text-sm font-black text-blue-700 outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
                         </div>
-                        <div>
-                            <label class="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">DESIRED DOSE (Gy)</label>
-                            <!-- inputmode="decimal" ensures numeric keypad with dot on mobile -->
-                            <input type="number" id="form-dose" inputmode="decimal" class="w-full min-w-0 px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
-                        </div>
                         <div class="space-y-2 pt-2 border-t border-slate-50">
                             <div class="flex flex-col">
                                 <div class="flex justify-between items-center mb-0.5">
@@ -112,6 +112,11 @@
                                 <!-- min-w-0, appearance-none, min-h-[30px] prevent iOS overflow. Removed step attribute as native OS behavior overrides it. -->
                                 <input type="time" id="form-time" min="07:00" max="17:00" class="w-full min-w-0 appearance-none min-h-[30px] px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-50">
+                            <label class="text-[12px] font-black text-slate-500 tracking-tighter mb-0.5">DESIRED DOSE (Gy)</label>
+                            <!-- inputmode="decimal" ensures numeric keypad with dot on mobile -->
+                            <input type="number" id="form-dose" inputmode="decimal" class="w-full min-w-0 px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                         </div>
                     </div>
                 </div>
