@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <!-- 
+  CHANGE LOG - March 6, 2026 (Part 4)
+  1. Fixed Thursday calibration logic: If the infusion date is on a Thursday, the calibration date will now correctly default to the Thursday of the previous week (7 days prior), rather than the same day.
+
   CHANGE LOG - March 6, 2026 (Part 3)
   1. Fixed calendar visual: The blue highlighted infusion date now also displays a purple border if it falls within the recommended treatment window.
 
@@ -232,9 +235,9 @@
                 const refDate = new Date(procDate);
                 
                 if (offsetType === 3) {
-                    // Find Thursday prior to or on the infusion date
+                    // Find Thursday strictly prior to the infusion date (if Thursday, go back 1 week)
                     const day = refDate.getDay();
-                    const diff = (day >= 4) ? (day - 4) : (day + 3);
+                    const diff = (day === 4) ? 7 : ((day > 4) ? (day - 4) : (day + 3));
                     refDate.setDate(refDate.getDate() - diff);
                 } else {
                     refDate.setDate(procDate.getDate() - procDate.getDay()); // Sunday of the week
