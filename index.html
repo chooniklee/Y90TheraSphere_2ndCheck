@@ -1,5 +1,17 @@
 <!DOCTYPE html>
 <!-- 
+  CHANGE LOG - March 6, 2026 (Part 3)
+  1. Fixed calendar visual: The blue highlighted infusion date now also displays a purple border if it falls within the recommended treatment window.
+
+  CHANGE LOG - March 6, 2026 (Part 2)
+  1. Highlighted recommended treatment window (Day 3-9 post-calibration) with a purple box on the calendar.
+
+  CHANGE LOG - March 6, 2026
+  1. Added support for Thursday calibration option.
+  2. Updated auto-optimization algorithm to find the optimal vial size among 3 calibration dates (Week 1 Sun, Week 2 Sun, Thu).
+  3. Added a 3rd UI button allowing manual override to the Thursday calibration date.
+  4. Updated terminology from "Calibration Week/Sunday" to "Calibration Date".
+
   CHANGE LOG - March 4, 2026
   1. Reordered input fields: Moved "Desired Dose (Gy)" to the bottom of the section (below Infusion Date and Time).
   2. UX Improvement: "Infusion Time" field starts empty by default but automatically initializes to '08:00' upon user focus/click.
@@ -53,7 +65,7 @@
                 </h1>
                 <div class="flex items-center gap-4 mt-0.5">
                     <p class="text-blue-200 text-sm font-medium opacity-90 decoration-slate-300">
-                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 3/4/2026)
+                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 3/6/2026)
                     </p>
                 </div>
             </div>
@@ -124,11 +136,12 @@
                 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 no-print">
                     <h4 class="font-black text-[13px] uppercase text-slate-400 tracking-wide mb-1 border-b border-slate-100 pb-1">
-                        <span id="icon-calendar-ref"></span>Calibration Week
+                        <span id="icon-calendar-ref"></span>Calibration Date
                     </h4>
-                    <div class="grid grid-cols-2 gap-3 text-center pt-1">
-                        <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">Week-1</button>
-                        <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter">Week-2</button>
+                    <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                        <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Week-1</button>
+                        <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Week-2</button>
+                        <button id="btn-thursday" onclick="setWeekOffset(3)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Thursday</button>
                     </div>
                 </div>
 
@@ -211,16 +224,24 @@
         }
 
         // --- Core Calculation Logic ---
-        function getReferenceSunday(procDateStr, offsetWeeks) {
+        function getReferenceDate(procDateStr, offsetType) {
             if (!procDateStr) return new Date();
             try {
                 const parts = procDateStr.split('-').map(Number);
                 const procDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
-                const refSunday = new Date(procDate);
-                refSunday.setDate(procDate.getDate() - procDate.getDay());
-                if (offsetWeeks === 2) refSunday.setDate(refSunday.getDate() - 7);
-                refSunday.setHours(12, 0, 0, 0);
-                return refSunday;
+                const refDate = new Date(procDate);
+                
+                if (offsetType === 3) {
+                    // Find Thursday prior to or on the infusion date
+                    const day = refDate.getDay();
+                    const diff = (day >= 4) ? (day - 4) : (day + 3);
+                    refDate.setDate(refDate.getDate() - diff);
+                } else {
+                    refDate.setDate(procDate.getDate() - procDate.getDay()); // Sunday of the week
+                    if (offsetType === 2) refDate.setDate(refDate.getDate() - 7); // Week-2 Sunday
+                }
+                refDate.setHours(12, 0, 0, 0);
+                return refDate;
             } catch (e) { return new Date(); }
         }
 
@@ -236,8 +257,8 @@
             const liverShuntFactor = 1 - shuntFraction;
             const activityAtTreatment = (parseFloat(desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * liverShuntFactor);
             const procDateTime = new Date(`${procedureDate}T${procedureTime}:00`);
-            const refSunday = getReferenceSunday(procedureDate, weekOffset);
-            const daysElapsed = (procDateTime - refSunday) / (1000 * 60 * 60 * 24);
+            const refDateObj = getReferenceDate(procedureDate, weekOffset);
+            const daysElapsed = (procDateTime - refDateObj) / (1000 * 60 * 60 * 24);
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
             const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
             
@@ -251,7 +272,7 @@
             }
             const closest = allOptions.reduce((prev, curr) => Math.abs(curr.vialSize - activityAtReference) < Math.abs(prev.vialSize - activityAtReference) ? curr : prev);
             
-            return { activityAtTreatment, activityAtReference, autoRecommendedVial: closest.vialSize, refDate: refSunday, options: allOptions, daysElapsed };
+            return { activityAtTreatment, activityAtReference, autoRecommendedVial: closest.vialSize, refDate: refDateObj, options: allOptions, daysElapsed };
         }
 
         function calculateBestWeek(caseData) {
@@ -270,17 +291,27 @@
             const procDT = new Date(`${date}T${time}:00`);
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
 
-            const evaluateWeek = (offset) => {
-                const ref = getReferenceSunday(date, offset);
+            const evaluateWeek = (offsetType) => {
+                const ref = getReferenceDate(date, offsetType);
                 const days = (procDT - ref) / (1000 * 60 * 60 * 24);
                 const actRef = actP / Math.exp(-lambda * days);
-                if (actRef < VIAL_MIN) return (VIAL_MIN - actRef) * 10;
-                if (actRef > VIAL_MAX) return (actRef - VIAL_MAX) * 10;
-                const closestVial = Math.round(actRef / VIAL_STEP) * VIAL_STEP;
+                
+                // Heavily penalize calibration dates that demand a vial size outside available inventory
+                if (actRef < VIAL_MIN) return Math.abs(VIAL_MIN - actRef) * 1000 + 10000;
+                if (actRef > VIAL_MAX) return Math.abs(actRef - VIAL_MAX) * 1000 + 10000;
+                
+                const closestVial = Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(actRef / VIAL_STEP) * VIAL_STEP));
                 return Math.abs(actRef - closestVial);
             };
 
-            return evaluateWeek(2) < evaluateWeek(1) ? 2 : 1;
+            // Only auto-optimize between Week 1 (1) and Week 2 (2)
+            let best = 1;
+            let minScore = evaluateWeek(1);
+            
+            const score2 = evaluateWeek(2);
+            if (score2 < minScore) { best = 2; }
+
+            return best;
         }
 
         function calculateTotalLungDose() {
@@ -294,7 +325,7 @@
                 const shuntFraction = (parseFloat(c.lungShunt) || 0) / 100;
                 const activityAtTreatment = (parseFloat(c.desiredDose) * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFraction));
                 const procDateTime = new Date(`${c.procedureDate}T${c.procedureTime}:00`);
-                const daysElapsed = (procDateTime - getReferenceSunday(c.procedureDate, c.weekOffset)) / (1000 * 60 * 60 * 24);
+                const daysElapsed = (procDateTime - getReferenceDate(c.procedureDate, c.weekOffset)) / (1000 * 60 * 60 * 24);
                 const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
                 const activityAtReference = activityAtTreatment / Math.exp(-lambda * daysElapsed);
                 let vialSizeToUse = c.selectedVialSize || Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(activityAtReference / VIAL_STEP) * VIAL_STEP));
@@ -381,28 +412,34 @@
             }
             document.getElementById('form-date-label').textContent = dateLabel;
 
-            // Update Reference Sunday Buttons
+            // Update Reference Date Buttons
             const btn1 = document.getElementById('btn-week-1');
             const btn2 = document.getElementById('btn-week-2');
+            const btn3 = document.getElementById('btn-thursday');
             
             let w1Text = "Week-1";
             let w2Text = "Week-2";
+            let thuText = "Thursday";
             
             if (activeCase.procedureDate) {
-                const w1Date = getReferenceSunday(activeCase.procedureDate, 1);
-                const w2Date = getReferenceSunday(activeCase.procedureDate, 2);
-                w1Text = `Week-1 (${w1Date.getMonth() + 1}/${w1Date.getDate()})`;
-                w2Text = `Week-2 (${w2Date.getMonth() + 1}/${w2Date.getDate()})`;
+                const w1Date = getReferenceDate(activeCase.procedureDate, 1);
+                const w2Date = getReferenceDate(activeCase.procedureDate, 2);
+                const thuDate = getReferenceDate(activeCase.procedureDate, 3);
+                w1Text = `Week-1<br/>(${w1Date.getMonth() + 1}/${w1Date.getDate()})`;
+                w2Text = `Week-2<br/>(${w2Date.getMonth() + 1}/${w2Date.getDate()})`;
+                thuText = `Thursday<br/>(${thuDate.getMonth() + 1}/${thuDate.getDate()})`;
             }
             
-            btn1.innerText = w1Text;
-            btn2.innerText = w2Text;
+            btn1.innerHTML = w1Text;
+            btn2.innerHTML = w2Text;
+            btn3.innerHTML = thuText;
             
             const activeClass = 'bg-blue-600 border-blue-600 text-white shadow-md';
             const inactiveClass = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
 
-            btn1.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 1 ? activeClass : inactiveClass}`;
-            btn2.className = `py-1.5 text-[12px] font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 2 ? activeClass : inactiveClass}`;
+            btn1.className = `py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 1 ? activeClass : inactiveClass}`;
+            btn2.className = `py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 2 ? activeClass : inactiveClass}`;
+            btn3.className = `py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter ${activeCase.weekOffset === 3 ? activeClass : inactiveClass}`;
 
             // Update Decay Toggle Button
             const btnDecay = document.getElementById('btn-decay-toggle');
@@ -415,6 +452,8 @@
 
         function renderResults(preventScroll = false) {
             const container = document.getElementById('results-container');
+            const scrollArea = document.getElementById('table-scroll-area');
+            const savedScrollTop = scrollArea ? scrollArea.scrollTop : null;
 
             const activeCase = state.cases[state.activeCaseIndex];
 
@@ -593,22 +632,43 @@
                     const monthsInView = Array.from(new Set(calendarDays.map(d => d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase())));
                     const calendarMonthHeader = monthsInView.join('-');
 
+                    let minRecDate = null;
+                    let maxRecDate = null;
+                    if (state.results && state.results.refDate) {
+                        minRecDate = new Date(state.results.refDate);
+                        minRecDate.setDate(minRecDate.getDate() + 3);
+                        maxRecDate = new Date(state.results.refDate);
+                        maxRecDate.setDate(maxRecDate.getDate() + 9);
+                    }
+
                     let daysGridHtml = calendarDays.map((date) => {
                         const isSameDay = (d1, d2) => d1 && d2 && d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
                         const isProcDate = isSameDay(date, procDateObj);
-                        const isRefSunday = state.results && state.results.refDate && isSameDay(date, state.results.refDate);
+                        const isRefDate = state.results && state.results.refDate && isSameDay(date, state.results.refDate);
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
+                        let isRecWindow = false;
+                        if (minRecDate && maxRecDate) {
+                            const dTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+                            const minTime = new Date(minRecDate.getFullYear(), minRecDate.getMonth(), minRecDate.getDate()).getTime();
+                            const maxTime = new Date(maxRecDate.getFullYear(), maxRecDate.getMonth(), maxRecDate.getDate()).getTime();
+                            isRecWindow = dTime >= minTime && dTime <= maxTime;
+                        }
+
                         let classes = `relative h-8 flex items-center justify-center text-[11px] font-bold rounded-lg transition-all `;
-                        if (isProcDate) classes += 'bg-blue-600 text-white shadow-md z-10 ';
-                        else if (isRefSunday) classes += 'border-2 border-amber-400 bg-amber-50 shadow-sm ';
+                        if (isProcDate) {
+                            classes += 'bg-blue-600 text-white shadow-md z-10 ';
+                            if (isRecWindow) classes += 'border-2 border-purple-400 ';
+                        }
+                        else if (isRefDate) classes += 'border-2 border-amber-400 bg-amber-50 shadow-sm ';
+                        else if (isRecWindow) classes += 'border-2 border-purple-400 bg-purple-50 text-purple-800 shadow-sm ';
                         else if (isWeekend) classes += 'bg-emerald-50/80 text-emerald-700 ';
                         else classes += 'bg-slate-50 text-slate-700 ';
 
                         return `
                             <div class="${classes}">
                                 ${date.getDate()}
-                                ${isRefSunday && !isProcDate ? `<div class="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></div>` : ''}
+                                ${isRefDate && !isProcDate ? `<div class="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full"></div>` : ''}
                             </div>
                         `;
                     }).join('');
@@ -631,7 +691,11 @@
                                 </div>
                                 <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
                                     <div class="w-3.5 h-3.5 border-2 border-amber-400 rounded bg-amber-50"></div>
-                                    <span>Calibration Sunday</span>
+                                    <span>Calibration Date</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
+                                    <div class="w-3.5 h-3.5 border-2 border-purple-400 bg-purple-50 rounded"></div>
+                                    <span>Rec. Window (Day 3-9)</span>
                                 </div>
                                 <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500">
                                     <div class="w-3.5 h-3.5 bg-emerald-50 rounded border border-emerald-100"></div>
