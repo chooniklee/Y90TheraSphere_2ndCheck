@@ -139,7 +139,7 @@
                             <div class="flex flex-col">
                                 <label class="text-[12px] font-black text-slate-500 uppercase tracking-tighter mb-0.5">Infusion Time</label>
                                 <!-- min-w-0, appearance-none, min-h-[30px] prevent iOS overflow. Removed step attribute as native OS behavior overrides it. -->
-                                <input type="time" id="form-time" min="07:00" max="17:00" class="w-full min-w-0 appearance-none min-h-[30px] px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
+                                <input type="time" id="form-time" min="07:00" max="16:00" class="w-full min-w-0 appearance-none min-h-[30px] px-3 py-1 bg-slate-50 border rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
                         </div>
                         <div class="pt-2 border-t border-slate-50">
@@ -272,7 +272,7 @@
             if (!targetVolume || !desiredDose || !procedureDate || !procedureTime) return null;
 
             const [th, tm] = procedureTime.split(':').map(Number);
-            if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return null;
+            if (isNaN(th) || th < 7 || th > 16 || (th === 16 && tm > 0)) return null;
 
             const massKg = (parseFloat(targetVolume) * LIVER_DENSITY) / 1000;
             const shuntFraction = (parseFloat(lungShunt) || 0) / 100;
@@ -305,7 +305,7 @@
             if (!vol || !dose || !date || !time) return 1;
 
             const [th, tm] = time.split(':').map(Number);
-            if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return 1;
+            if (isNaN(th) || th < 7 || th > 16 || (th === 16 && tm > 0)) return 1;
 
             const massKg = (vol * LIVER_DENSITY) / 1000;
             const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
@@ -341,7 +341,7 @@
                 if (!c.targetVolume || !c.desiredDose || !c.procedureDate || !c.procedureTime) return acc;
                 
                 const [th, tm] = c.procedureTime.split(':').map(Number);
-                if (isNaN(th) || th < 7 || th > 17 || (th === 17 && tm > 0)) return acc;
+                if (isNaN(th) || th < 7 || th > 16 || (th === 16 && tm > 0)) return acc;
 
                 const massKg = (parseFloat(c.targetVolume) * LIVER_DENSITY) / 1000;
                 const shuntFraction = (parseFloat(c.lungShunt) || 0) / 100;
@@ -482,7 +482,7 @@
             let isInvalidTime = false;
             if (activeCase.procedureTime) {
                 const [th, tm] = activeCase.procedureTime.split(':').map(Number);
-                if (!isNaN(th) && (th < 7 || th > 17 || (th === 17 && tm > 0))) {
+                if (!isNaN(th) && (th < 7 || th > 16 || (th === 16 && tm > 0))) {
                     isInvalidTime = true;
                 }
             }
@@ -494,7 +494,7 @@
                             <div class="flex flex-col items-center px-12 text-center">
                                 ${getIcon('clock', 48, 'mb-4 text-red-400')}
                                 <p class="text-lg font-black text-red-600 mb-2">Invalid Infusion Time</p>
-                                <p class="text-sm font-bold text-red-500 mb-6">Time must be between 07:00 AM and 05:00 PM.</p>
+                                <p class="text-sm font-bold text-red-500 mb-6">Time must be between 07:00 AM and 04:00 PM.</p>
                             </div>
                         </div>`;
                 } else {
@@ -752,7 +752,7 @@
             let isInvalidTime = false;
             if (activeCase.procedureTime) {
                 const [th, tm] = activeCase.procedureTime.split(':').map(Number);
-                if (!isNaN(th) && (th < 7 || th > 17 || (th === 17 && tm > 0))) {
+                if (!isNaN(th) && (th < 7 || th > 16 || (th === 16 && tm > 0))) {
                     isInvalidTime = true;
                 }
             }
@@ -764,7 +764,7 @@
                         <div class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
                             ${getIcon('clock', 32, 'mb-3 text-red-400')}
                             <p class="text-sm font-black text-red-600 uppercase tracking-widest">Invalid Time</p>
-                            <p class="text-xs font-bold text-red-500 mt-1">Please enter a time between 07:00 AM and 05:00 PM.</p>
+                            <p class="text-xs font-bold text-red-500 mt-1">Please enter a time between 07:00 AM and 04:00 PM.</p>
                         </div>
                     `;
                 } else {
@@ -792,7 +792,7 @@
             // Date setup
             let simDate = new Date(`${activeCase.procedureDate}T${activeCase.procedureTime}:00`);
             const endSimDate = new Date(simDate);
-            endSimDate.setHours(17, 0, 0, 0); // Stops cleanly at 5:00 PM
+            endSimDate.setHours(16, 0, 0, 0); // Stops cleanly at 4:00 PM
 
             let rowsHtml = '';
             let hasRows = false;
@@ -847,7 +847,7 @@
             }
 
             if (!hasRows) {
-                rowsHtml = `<tr><td colspan="5" class="px-2 sm:px-4 md:px-6 py-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No additional hours available before 5:00 PM.</td></tr>`;
+                rowsHtml = `<tr><td colspan="5" class="px-2 sm:px-4 md:px-6 py-6 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No additional hours available before 4:00 PM.</td></tr>`;
             }
 
             // Safely destroy previous chart instances from memory and DOM (error prevention)
@@ -861,7 +861,7 @@
                     <div class="p-3 border-b bg-slate-50 flex items-center justify-between">
                         <h3 class="font-black text-slate-700 text-[12px] uppercase tracking-wide flex items-center gap-2">
                             <span class="bg-amber-500 text-white p-1 rounded-md">${getIcon('clock', 14)}</span>
-                            Same-Day Delay Simulator (Up to 5:00 PM)
+                            Same-Day Delay Simulator (Up to 4:00 PM)
                         </h3>
                     </div>
                     <div class="overflow-y-auto max-h-[300px] custom-scrollbar h-full">
@@ -992,7 +992,7 @@
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
                         ${getIcon('activity', 32, 'mb-3 text-slate-300')}
                         <p class="text-sm font-black text-slate-600 uppercase tracking-widest">No Plot Data</p>
-                        <p class="text-xs text-slate-400 mt-1">Infusion scheduled too close to 5:00 PM.</p>
+                        <p class="text-xs text-slate-400 mt-1">Infusion scheduled too close to 4:00 PM.</p>
                     </div>
                 `;
             }
@@ -1344,7 +1344,24 @@
                 // Helper: normalize "H:MM" → "0H:MM" for HTML time input
                 const parseTime = (raw) => {
                     if (!raw) return null;
-                    return raw.length === 4 ? '0' + raw : raw;
+                    const s = raw.trim().toUpperCase();
+                    const isPM = s.includes('PM');
+                    const isAM = s.includes('AM');
+                    const stripped = s.replace(/[AP]M/, '').trim();
+                    let h, m;
+                    if (stripped.includes(':')) {
+                        const parts = stripped.split(':');
+                        h = parseInt(parts[0], 10);
+                        m = parseInt(parts[1], 10);
+                    } else if (stripped.length <= 4 && /^\d+$/.test(stripped)) {
+                        if (stripped.length <= 2) { h = parseInt(stripped, 10); m = 0; }
+                        else { m = parseInt(stripped.slice(-2), 10); h = parseInt(stripped.slice(0, -2), 10); }
+                    } else { return null; }
+                    if (isNaN(h) || isNaN(m)) return null;
+                    if (isPM && h !== 12) h += 12;
+                    if (isAM && h === 12) h = 0;
+                    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+                    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
                 };
 
                 // Helper: fill a case object with infusion-specific fields (prefix = "Target1" or "Target2")
