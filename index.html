@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <!-- 
+  CHANGE LOG - May 27, 2026
+  1. Added client-side drag-and-drop PDF parsing using Mozilla's pdf.js library.
+  2. Automated extraction of parameters (Target, Volume, LSF, Dose, Date, Time) directly from the TheraSphere worksheet format.
+
   CHANGE LOG - March 6, 2026 (Part 4)
   1. Fixed Thursday calibration logic: If the infusion date is on a Thursday, the calibration date will now correctly default to the Thursday of the previous week (7 days prior), rather than the same day.
 
@@ -38,6 +42,8 @@
     <title>Y90 TheraSphere Physics 2nd Check</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include pdf.js for completely local client-side PDF text extraction without backend APIs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         @media print {
             @page { margin: 1cm; size: auto; }
@@ -58,6 +64,13 @@
 </head>
 <body class="bg-[#00274C] text-slate-900 font-sans p-3 md:p-4 outline-none min-h-screen">
 
+    <!-- Full-screen drag-and-drop overlay (hidden by default) -->
+    <div id="drag-overlay" class="fixed inset-0 z-50 bg-[#00274C]/90 backdrop-blur-md hidden flex-col items-center justify-center border-4 border-dashed border-[#FFCB05] m-4 rounded-3xl pointer-events-none transition-all duration-300">
+        <span id="icon-upload" class="text-white mb-4"></span>
+        <div class="text-white text-2xl md:text-3xl font-black mb-2 tracking-tighter">Drop PDF Worksheet Here</div>
+        <div class="text-blue-200 text-sm md:text-base font-bold">Parameters will be automatically extracted</div>
+    </div>
+
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
@@ -68,7 +81,7 @@
                 </h1>
                 <div class="flex items-center gap-4 mt-0.5">
                     <p class="text-blue-200 text-sm font-medium opacity-90 decoration-slate-300">
-                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 3/6/2026)
+                        Independent caculator developed by Choonik Lee, PhD DABR (Last update on 5/27/2026)
                     </p>
                 </div>
             </div>
@@ -189,7 +202,8 @@
                 'package': `<g><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g>`,
                 'check': `<polyline points="20 6 9 17 4 12" />`,
                 'printer': `<g><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></g>`,
-                'clock': `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 16 14" />`
+                'clock': `<circle cx="12" cy="12" r="10" /><polyline points="12 6 12 16 14" />`,
+                'upload': `<g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></g>`
             };
             return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="${className}">${paths[name.toLowerCase()]}</svg>`;
         };
@@ -201,6 +215,11 @@
         document.getElementById('icon-file-text').innerHTML = getIcon('file-text', 14);
         document.getElementById('icon-calendar-ref').innerHTML = getIcon('calendar', 10, 'inline mr-2');
         document.getElementById('icon-clock').innerHTML = getIcon('clock', 16);
+        document.getElementById('icon-upload').innerHTML = getIcon('upload', 48);
+
+        // --- PDF.js Configuration ---
+        // Setup worker source required by pdf.js to run decoding in a separate thread cleanly
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         // --- State Management ---
         const THERASPHERE_FACTOR = 50; 
@@ -1241,6 +1260,150 @@
         };
         timeInputEl.addEventListener('focus', setTimeDefault);
         timeInputEl.addEventListener('click', setTimeDefault);
+
+        // --- PDF Drag and Drop Handling Logic ---
+        const overlay = document.getElementById('drag-overlay');
+        let dragCounter = 0; // Using a counter prevents flickering when dragging over child elements
+
+        // Show the dark overlay when file enters the window
+        window.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragCounter++;
+            if (dragCounter === 1) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            }
+        });
+
+        // Hide the overlay when the file is dragged away from the window
+        window.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter === 0) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        });
+
+        // 'dragover' event must be prevented to allow 'drop' to fire correctly in the browser
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        // Handle the actual drop event
+        window.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                // FIX: Extract the first file from the FileList object correctly using index [0]
+                const file = e.dataTransfer.files[0];
+                if (file.type === 'application/pdf') {
+                    await parseWorksheetPDF(file);
+                } else {
+                    alert("Please drop a valid PDF file.");
+                }
+            }
+        });
+
+        // Parse TheraSphere worksheet PDF by reading AcroForm field values directly.
+        // getTextContent() only returns static printed labels — it cannot read form field values.
+        // getAnnotations() returns the actual field data from the PDF's AcroForm layer.
+        async function parseWorksheetPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+                // Collect all Widget annotation objects across all pages into a flat map: { fieldName -> fieldValue }
+                const fields = {};
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const annotations = await page.getAnnotations();
+                    for (const ann of annotations) {
+                        if (ann.subtype === 'Widget' && ann.fieldName) {
+                            const val = (ann.fieldValue || '').toString().trim();
+                            if (val) fields[ann.fieldName] = val;
+                        }
+                    }
+                }
+
+                // Helper: read a field by exact AcroForm name
+                const f = (name) => fields[name] || '';
+
+                // Helper: parse "M/D/YYYY Day" or "M/D/YYYY" → "YYYY-MM-DD" for HTML date input
+                const parseDate = (raw) => {
+                    if (!raw) return null;
+                    const datePart = raw.split(' ')[0]; // strip optional day-of-week suffix e.g. "Thu"
+                    const parts = datePart.split('/');
+                    if (parts.length !== 3) return null;
+                    return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                };
+
+                // Helper: normalize "H:MM" → "0H:MM" for HTML time input
+                const parseTime = (raw) => {
+                    if (!raw) return null;
+                    return raw.length === 4 ? '0' + raw : raw;
+                };
+
+                // Helper: fill a case object with infusion-specific fields (prefix = "Target1" or "Target2")
+                const fillCase = (caseObj, prefix) => {
+                    let updated = false;
+                    const target = f(prefix);
+                    if (target) { caseObj.target = target; updated = true; }
+                    const vol = parseFloat(f(`${prefix}_Vol`));
+                    if (!isNaN(vol)) { caseObj.targetVolume = vol; updated = true; }
+                    const dose = parseFloat(f(`${prefix}_Dose`));
+                    if (!isNaN(dose)) { caseObj.desiredDose = dose; updated = true; }
+                    const time = parseTime(f(`${prefix}_Time`));
+                    if (time) { caseObj.procedureTime = time; updated = true; }
+                    const date = parseDate(f(`${prefix}_Date`));
+                    if (date) { caseObj.procedureDate = date; updated = true; }
+                    return updated;
+                };
+
+                // --- Lung Shunt Fraction (shared across all infusions) ---
+                const lsfVal = parseFloat(f('Lung Shunt Fraction (%)'));
+                const lsf = isNaN(lsfVal) ? '' : lsfVal;
+
+                // --- Reset state to a clean single case before populating ---
+                state.cases = [createNewCase(lsf)];
+                state.activeCaseIndex = 0;
+
+                // --- Infusion 1 ---
+                let anyUpdated = fillCase(state.cases[0], 'Target1');
+                if (lsf !== '') { state.cases[0].lungShunt = lsf; anyUpdated = true; }
+                state.cases[0].manualWeekOverride = false;
+                state.cases[0].selectedVialSize = null;
+
+                // --- Infusion 2 (only if Target2 fields are populated) ---
+                // Check for any non-empty Target2 field before creating the second tab
+                const hasInfusion2 = f('Target2') || f('Target2_Vol') || f('Target2_Dose') || f('Target2_Date');
+                if (hasInfusion2) {
+                    const case2 = createNewCase(lsf); // LSF is the same for both infusions
+                    const updated2 = fillCase(case2, 'Target2');
+                    if (updated2) {
+                        case2.manualWeekOverride = false;
+                        case2.selectedVialSize = null;
+                        state.cases.push(case2);
+                    }
+                }
+
+                // Start with Infusion 1 tab active
+                state.activeCaseIndex = 0;
+
+                if (anyUpdated) {
+                    updateAllUI(true);
+                } else {
+                    alert("Could not find expected form fields in this PDF.\nPlease verify this is a TheraSphere Planning Worksheet.");
+                }
+
+            } catch (error) {
+                console.error("PDF Parsing Error:", error);
+                alert("An error occurred while reading the PDF.\nPlease enter values manually.");
+            }
+        }
 
         // Initial render
         updateAllUI();
