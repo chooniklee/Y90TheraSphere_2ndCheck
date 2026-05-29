@@ -7,6 +7,11 @@
   4. Infusion time range restricted to 07:00-16:00 to match clinic hours.
   5. Thursday calibration button added (Beta) with date shown in parentheses.
   6. Fixed auto week-selection bug: added dose-error tiebreaker so the week delivering closer to desired dose is preferred.
+  7. Fixed auto week-selection bug: removed inventory-range penalty in evaluateWeek(). actRef slightly exceeding VIAL_MAX
+     (e.g. due to timezone rounding) no longer triggers a 10000-point penalty; the value is clamped to the nearest vial
+     and compared via dose error, allowing Week-2 / 20 GBq to be correctly selected over Week-1 / 3.5 GBq.
+  8. Fixed auto week-selection trigger: procedureTime is now required in updateAllUI before calling calculateBestWeek,
+     preventing premature Week-1 lock-in when time had not yet been entered.
 
   CHANGE LOG - May 27, 2026
   1. Added client-side drag-and-drop PDF parsing using Mozilla's pdf.js library.
@@ -320,7 +325,10 @@
             const massKg = (vol * LIVER_DENSITY) / 1000;
             const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
             const actP = (dose * massKg) / (THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFrac));
-            const procDT = new Date(`${date}T${time}:00`);
+            // Parse procDT using local time (same method as getReferenceDate) to avoid timezone mismatch
+            const [procH, procM] = time.split(':').map(Number);
+            const procParts = date.split('-').map(Number);
+            const procDT = new Date(procParts[0], procParts[1] - 1, procParts[2], procH, procM, 0);
             const lambda = Math.log(2) / Y90_HALF_LIFE_DAYS;
 
             const evaluateWeek = (offsetType) => {
@@ -329,9 +337,8 @@
                 const actRef = actP / Math.exp(-lambda * days);
 
                 // Heavily penalize calibration dates that demand a vial size outside available inventory
-                if (actRef < VIAL_MIN) return { primary: Math.abs(VIAL_MIN - actRef) * 1000 + 10000, secondary: 9999 };
-                if (actRef > VIAL_MAX) return { primary: Math.abs(actRef - VIAL_MAX) * 1000 + 10000, secondary: 9999 };
-
+                // Clamp to nearest available vial. No penalty for out-of-range actRef;
+                // dose error (secondary score) handles the comparison naturally.
                 const closestVial = Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(actRef / VIAL_STEP) * VIAL_STEP));
                 // Primary score: how well the vial step matches the required activity
                 const primary = Math.abs(actRef - closestVial);
@@ -361,6 +368,7 @@
                 // Pick the week whose closest vial delivers a dose nearer to the desired dose
                 best = (s2.secondary < s1.secondary) ? 2 : 1;
             }
+            console.log('[BestWeek] s1:', JSON.stringify(s1), 's2:', JSON.stringify(s2), '=> best:', best, '| manualOverride:', caseData.manualWeekOverride, '| currentOffset:', caseData.weekOffset);
 
             return best;
         }
@@ -390,7 +398,8 @@
             const activeCase = state.cases[state.activeCaseIndex] || state.cases[0];
 
             // 1. Auto-adjust best week offset if form valid
-            if (activeCase.targetVolume && activeCase.procedureDate && activeCase.desiredDose) {
+            // procedureTime must be present: calculateBestWeek returns 1 immediately without it
+            if (activeCase.targetVolume && activeCase.procedureDate && activeCase.desiredDose && activeCase.procedureTime) {
                 const bestWeek = calculateBestWeek(activeCase);
                 if (activeCase.weekOffset !== bestWeek && !activeCase.manualWeekOverride) {
                     activeCase.weekOffset = bestWeek;
