@@ -1,5 +1,13 @@
 <!DOCTYPE html>
 <!-- 
+  CHANGE LOG - May 29, 2026
+  1. Fixed PDF parsing to read AcroForm field values via getAnnotations() instead of getTextContent(), which only returned static labels.
+  2. Added support for Infusion 2 (Target2_*) fields: automatically opens a second tab when populated.
+  3. Robust time parser: accepts 09:30, 0930, 930, 9:30 AM, 9:30 PM, etc.
+  4. Infusion time range restricted to 07:00-16:00 to match clinic hours.
+  5. Thursday calibration button added (Beta) with date shown in parentheses.
+  6. Fixed auto week-selection bug: added dose-error tiebreaker so the week delivering closer to desired dose is preferred.
+
   CHANGE LOG - May 27, 2026
   1. Added client-side drag-and-drop PDF parsing using Mozilla's pdf.js library.
   2. Automated extraction of parameters (Target, Volume, LSF, Dose, Date, Time) directly from the TheraSphere worksheet format.
@@ -157,7 +165,7 @@
                     <div class="grid grid-cols-3 gap-2 text-center pt-1">
                         <button id="btn-week-1" onclick="setWeekOffset(1)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Week-1</button>
                         <button id="btn-week-2" onclick="setWeekOffset(2)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Week-2</button>
-                        <button id="btn-thursday" onclick="setWeekOffset(3)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Thursday</button>
+                        <button id="btn-thursday-1" onclick="setWeekOffset(3)" class="py-1 text-[10px] sm:text-[11px] leading-tight font-black rounded-lg border transition-all uppercase tracking-tighter">Thu (Beta)</button>
                     </div>
                 </div>
 
@@ -253,11 +261,13 @@
                 const procDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
                 const refDate = new Date(procDate);
                 
-                if (offsetType === 3) {
+                if (offsetType === 3 || offsetType === 4) {
                     // Find Thursday strictly prior to the infusion date (if Thursday, go back 1 week)
                     const day = refDate.getDay();
                     const diff = (day === 4) ? 7 : ((day > 4) ? (day - 4) : (day + 3));
                     refDate.setDate(refDate.getDate() - diff);
+                    // offsetType 4 = one further week back (the Thursday before that)
+                    if (offsetType === 4) refDate.setDate(refDate.getDate() - 7);
                 } else {
                     refDate.setDate(procDate.getDate() - procDate.getDay()); // Sunday of the week
                     if (offsetType === 2) refDate.setDate(refDate.getDate() - 7); // Week-2 Sunday
@@ -317,21 +327,40 @@
                 const ref = getReferenceDate(date, offsetType);
                 const days = (procDT - ref) / (1000 * 60 * 60 * 24);
                 const actRef = actP / Math.exp(-lambda * days);
-                
+
                 // Heavily penalize calibration dates that demand a vial size outside available inventory
-                if (actRef < VIAL_MIN) return Math.abs(VIAL_MIN - actRef) * 1000 + 10000;
-                if (actRef > VIAL_MAX) return Math.abs(actRef - VIAL_MAX) * 1000 + 10000;
-                
+                if (actRef < VIAL_MIN) return { primary: Math.abs(VIAL_MIN - actRef) * 1000 + 10000, secondary: 9999 };
+                if (actRef > VIAL_MAX) return { primary: Math.abs(actRef - VIAL_MAX) * 1000 + 10000, secondary: 9999 };
+
                 const closestVial = Math.max(VIAL_MIN, Math.min(VIAL_MAX, Math.round(actRef / VIAL_STEP) * VIAL_STEP));
-                return Math.abs(actRef - closestVial);
+                // Primary score: how well the vial step matches the required activity
+                const primary = Math.abs(actRef - closestVial);
+
+                // Secondary score (tiebreaker): delivered dose error when using the closest available vial
+                const actAtTreatment = closestVial * Math.exp(-lambda * days);
+                const massKg = (vol * LIVER_DENSITY) / 1000;
+                const shuntFrac = (parseFloat(caseData.lungShunt) || 0) / 100;
+                const deliveredDose = (actAtTreatment * THERASPHERE_FACTOR * RESIDUAL_EFFICIENCY * (1 - shuntFrac)) / massKg;
+                const secondary = Math.abs(deliveredDose - dose);
+
+                return { primary, secondary };
             };
 
             // Only auto-optimize between Week 1 (1) and Week 2 (2)
+            // Primary: vial-step fit. Tiebreaker (within 0.05 GBq): delivered dose closest to desired dose.
+            const s1 = evaluateWeek(1);
+            const s2 = evaluateWeek(2);
             let best = 1;
-            let minScore = evaluateWeek(1);
-            
-            const score2 = evaluateWeek(2);
-            if (score2 < minScore) { best = 2; }
+            const PRIMARY_TIE_THRESHOLD = 0.05;
+            if (s2.primary < s1.primary - PRIMARY_TIE_THRESHOLD) {
+                best = 2;
+            } else if (s1.primary < s2.primary - PRIMARY_TIE_THRESHOLD) {
+                best = 1;
+            } else {
+                // Scores are effectively tied on vial-step fit
+                // Pick the week whose closest vial delivers a dose nearer to the desired dose
+                best = (s2.secondary < s1.secondary) ? 2 : 1;
+            }
 
             return best;
         }
@@ -437,24 +466,24 @@
             // Update Reference Date Buttons
             const btn1 = document.getElementById('btn-week-1');
             const btn2 = document.getElementById('btn-week-2');
-            const btn3 = document.getElementById('btn-thursday');
+            const btn3 = document.getElementById('btn-thursday-1');
             
             let w1Text = "Week-1";
             let w2Text = "Week-2";
-            let thuText = "Thursday";
+            let thu1Text = "Thu (Beta)";
             
             if (activeCase.procedureDate) {
                 const w1Date = getReferenceDate(activeCase.procedureDate, 1);
                 const w2Date = getReferenceDate(activeCase.procedureDate, 2);
-                const thuDate = getReferenceDate(activeCase.procedureDate, 3);
+                const thu1Date = getReferenceDate(activeCase.procedureDate, 3);
                 w1Text = `Week-1<br/>(${w1Date.getMonth() + 1}/${w1Date.getDate()})`;
                 w2Text = `Week-2<br/>(${w2Date.getMonth() + 1}/${w2Date.getDate()})`;
-                thuText = `Thursday<br/>(${thuDate.getMonth() + 1}/${thuDate.getDate()})`;
+                thu1Text = `Thu (Beta)<br/>(${thu1Date.getMonth() + 1}/${thu1Date.getDate()})`;
             }
             
             btn1.innerHTML = w1Text;
             btn2.innerHTML = w2Text;
-            btn3.innerHTML = thuText;
+            btn3.innerHTML = thu1Text;
             
             const activeClass = 'bg-blue-600 border-blue-600 text-white shadow-md';
             const inactiveClass = 'bg-slate-50 text-slate-600 hover:bg-slate-100';
